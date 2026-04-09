@@ -2,19 +2,28 @@ import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'ai-invest-portfolio';
 
+function getStoredPortfolio() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function usePortfolio() {
-  const [portfolio, setPortfolio] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [portfolio, setPortfolio] = useState(() => getStoredPortfolio());
 
   useEffect(() => {
-    if (portfolio) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+    try {
+      if (portfolio) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // localStorage may be unavailable
     }
   }, [portfolio]);
 
@@ -27,7 +36,11 @@ export function usePortfolio() {
   };
 
   const clearPortfolio = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
     setPortfolio(null);
   };
 

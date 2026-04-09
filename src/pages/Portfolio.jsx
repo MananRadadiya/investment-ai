@@ -275,6 +275,48 @@ export default function Portfolio() {
   const assets = useMarketData();
   const [showValues, setShowValues] = useState(true);
 
+  // ─── Hooks MUST be called unconditionally (Rules of Hooks) ───
+  const currentValue = useMemo(() => {
+    if (!portfolio?.assets) return 0;
+    return portfolio.assets.reduce((sum, a) => {
+      const liveAsset = assets.find((m) => m.symbol === a.symbol);
+      if (liveAsset && a.buyPrice) {
+        return sum + (a.amount / a.buyPrice) * liveAsset.price;
+      }
+      return sum + a.amount;
+    }, 0);
+  }, [portfolio, assets]);
+
+  const chartData = useMemo(() => {
+    if (!portfolio?.assets) return [];
+    return portfolio.assets.map((a) => ({
+      name: a.symbol,
+      value: +(a.allocation * 100).toFixed(1),
+      color: a.color,
+    }));
+  }, [portfolio]);
+
+  // Top performer
+  const topPerformer = useMemo(() => {
+    if (!portfolio?.assets) return null;
+    let best = null;
+    let bestPnl = -Infinity;
+    portfolio.assets.forEach(a => {
+      const live = assets.find(m => m.symbol === a.symbol);
+      if (live && a.buyPrice) {
+        const pnl = ((live.price - a.buyPrice) / a.buyPrice) * 100;
+        if (pnl > bestPnl) { bestPnl = pnl; best = { ...a, pnl }; }
+      }
+    });
+    return best;
+  }, [portfolio, assets]);
+
+  // Biggest holding
+  const biggestHolding = useMemo(() => {
+    if (!portfolio?.assets) return null;
+    return [...portfolio.assets].sort((a, b) => b.allocation - a.allocation)[0];
+  }, [portfolio]);
+
   /* ─── Empty State ─── */
   if (!portfolio) {
     return (
@@ -356,43 +398,10 @@ export default function Portfolio() {
     );
   }
 
-  /* ─── Calculations ─── */
-  const currentValue = portfolio.assets.reduce((sum, a) => {
-    const liveAsset = assets.find((m) => m.symbol === a.symbol);
-    if (liveAsset && a.buyPrice) {
-      return sum + (a.amount / a.buyPrice) * liveAsset.price;
-    }
-    return sum + a.amount;
-  }, 0);
-
+  /* ─── Derived values (portfolio is guaranteed non-null here) ─── */
   const profitLoss = currentValue - portfolio.totalInvestment;
   const percentReturn = (profitLoss / portfolio.totalInvestment) * 100;
   const isPositive = profitLoss >= 0;
-
-  const chartData = portfolio.assets.map((a) => ({
-    name: a.symbol,
-    value: +(a.allocation * 100).toFixed(1),
-    color: a.color,
-  }));
-
-  // Top performer
-  const topPerformer = useMemo(() => {
-    let best = null;
-    let bestPnl = -Infinity;
-    portfolio.assets.forEach(a => {
-      const live = assets.find(m => m.symbol === a.symbol);
-      if (live && a.buyPrice) {
-        const pnl = ((live.price - a.buyPrice) / a.buyPrice) * 100;
-        if (pnl > bestPnl) { bestPnl = pnl; best = { ...a, pnl }; }
-      }
-    });
-    return best;
-  }, [portfolio.assets, assets]);
-
-  // Biggest holding
-  const biggestHolding = useMemo(() => {
-    return [...portfolio.assets].sort((a, b) => b.allocation - a.allocation)[0];
-  }, [portfolio.assets]);
 
   return (
     <motion.div

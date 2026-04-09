@@ -19,7 +19,11 @@ export function usePaperTrading() {
   const [state, setState] = useState(loadState);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // localStorage may be unavailable
+    }
   }, [state]);
 
   const placeOrder = useCallback((order) => {
@@ -93,7 +97,11 @@ export function usePaperTrading() {
   }, []);
 
   const resetTrading = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
     setState({
       balance: initialBalance,
       orders: [],

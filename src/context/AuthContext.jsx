@@ -17,16 +17,24 @@ const DEMO_USER = {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('ai-invest-user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('ai-invest-user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
   const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('ai-invest-user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('ai-invest-user');
+    try {
+      if (user) {
+        localStorage.setItem('ai-invest-user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('ai-invest-user');
+      }
+    } catch {
+      // localStorage may be unavailable
     }
   }, [user]);
 
