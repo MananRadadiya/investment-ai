@@ -1,0 +1,428 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────── CSS Custom Properties — DARK (Default) ──────────────── */
+:root,
+:root[data-theme="dark"] {
+  --color-bg: #0b0f14;
+  --color-bg-elevated: #12171e;
+  --color-surface: rgba(255, 255, 255, 0.04);
+  --color-surface-hover: rgba(255, 255, 255, 0.065);
+  --color-surface-active: rgba(255, 255, 255, 0.08);
+  --color-surface-solid: #161b22;
+  --color-accent: #4f8cff;
+  --color-accent-soft: rgba(79, 140, 255, 0.12);
+  --color-accent-muted: rgba(79, 140, 255, 0.08);
+  --color-green: #22c55e;
+  --color-green-soft: rgba(34, 197, 94, 0.12);
+  --color-red: #ef4444;
+  --color-red-soft: rgba(239, 68, 68, 0.12);
+  --color-amber: #f59e0b;
+  --color-amber-soft: rgba(245, 158, 11, 0.12);
+  --color-purple: #a78bfa;
+  --color-purple-soft: rgba(167, 139, 250, 0.12);
+  --color-text: #e6edf3;
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #b1bac4;
+  --color-text-muted: #8b949e;
+  --color-text-dim: #484f58;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.1);
+  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-input-bg: rgba(255, 255, 255, 0.04);
+  --color-card-hover-shadow: rgba(0, 0, 0, 0.2);
+  --color-scrollbar: rgba(255, 255, 255, 0.08);
+  --color-scrollbar-hover: rgba(255, 255, 255, 0.14);
+  --color-tooltip-bg: rgba(15, 20, 28, 0.95);
+  --panel-border: none;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ──────────────── CSS Custom Properties — LIGHT ──────────────── */
+:root[data-theme="light"] {
+  --color-bg: #f4f6f9;
+  --color-bg-elevated: #ffffff;
+  --color-surface: rgba(255, 255, 255, 0.9);
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-surface-active: rgba(0, 0, 0, 0.06);
+  --color-surface-solid: #ffffff;
+  --color-accent: #3b7ff5;
+  --color-accent-soft: rgba(59, 127, 245, 0.10);
+  --color-accent-muted: rgba(59, 127, 245, 0.06);
+  --color-green: #16a34a;
+  --color-green-soft: rgba(22, 163, 74, 0.10);
+  --color-red: #dc2626;
+  --color-red-soft: rgba(220, 38, 38, 0.10);
+  --color-amber: #d97706;
+  --color-amber-soft: rgba(217, 119, 6, 0.10);
+  --color-purple: #7c3aed;
+  --color-purple-soft: rgba(124, 58, 237, 0.10);
+  --color-text: #1a1d23;
+  --color-text-primary: #1a1d23;
+  --color-text-secondary: #4a5568;
+  --color-text-muted: #64748b;
+  --color-text-dim: #94a3b8;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-hover: rgba(0, 0, 0, 0.12);
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-overlay: rgba(0, 0, 0, 0.3);
+  --color-input-bg: rgba(0, 0, 0, 0.03);
+  --color-card-hover-shadow: rgba(0, 0, 0, 0.08);
+  --color-scrollbar: rgba(0, 0, 0, 0.1);
+  --color-scrollbar-hover: rgba(0, 0, 0, 0.18);
+  --color-tooltip-bg: rgba(255, 255, 255, 0.96);
+  --panel-border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ──────────────── Reset ──────────────── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* ──────────────── Scrollbar ──────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-scrollbar-hover); }
+
+/* ──────────────── Floating Panel — The Core Surface ──────────────── */
+.panel {
+  background: var(--color-surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: var(--panel-border);
+  border-radius: 20px;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 300ms ease;
+}
+
+.panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px var(--color-card-hover-shadow);
+}
+
+.panel-static {
+  background: var(--color-surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: var(--panel-border);
+  border-radius: 20px;
+  transition: background 300ms ease;
+}
+
+/* ──────────────── Section Label ──────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* ──────────────── Animations ──────────────── */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-surface-hover) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.terminal-glow {
+  text-shadow: 0 0 12px rgba(79, 140, 255, 0.25);
+}
+
+/* ──────────────── Selection ──────────────── */
+::selection {
+  background: rgba(79, 140, 255, 0.25);
+  color: #fff;
+}
+
+/* ──────────────── Login Background ──────────────── */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-20px) rotate(2deg); }
+  66% { transform: translateY(10px) rotate(-1deg); }
+}
+
+.login-bg {
+  background: linear-gradient(-45deg, #0b0f14, #111827, #0f172a, #0b0f14);
+  background-size: 400% 400%;
+  animation: gradient-shift 12s ease infinite;
+}
+
+:root[data-theme="light"] .login-bg {
+  background: linear-gradient(-45deg, #e8edf5, #dbeafe, #e0e7ff, #f0f4ff);
+  background-size: 400% 400%;
+  animation: gradient-shift 12s ease infinite;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+}
+
+:root[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.glass-card-strong {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+}
+
+:root[data-theme="light"] .glass-card-strong {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  animation: float 8s ease-in-out infinite;
+}
+
+:root[data-theme="light"] .login-orb {
+  opacity: 0.25;
+}
+
+/* ──────────────── Notification Badge ──────────────── */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.notification-badge {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* ──────────────── Counter Animation ──────────────── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-count-up {
+  animation: count-up 0.4s ease-out;
+}
+
+/* ──────────────── Glow Effects ──────────────── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(79, 140, 255, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(79, 140, 255, 0.2); }
+}
+
+.glow-accent {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ──────────────── Typing Animation ──────────────── */
+@keyframes blink-cursor {
+  0%, 100% { border-right-color: var(--color-accent); }
+  50% { border-right-color: transparent; }
+}
+
+.typing-cursor {
+  border-right: 2px solid var(--color-accent);
+  animation: blink-cursor 1s step-end infinite;
+  padding-right: 2px;
+}
+
+/* ──────────────── Fade In Up ──────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+/* ──────────────── Misc Utilities ──────────────── */
+.no-underline {
+  text-decoration: none;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ──────────────── Toast Animations ──────────────── */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+.toast-enter {
+  animation: toast-in 0.3s ease-out forwards;
+}
+
+.toast-exit {
+  animation: toast-out 0.3s ease-in forwards;
+}
+
+/* ──────────────── Confetti ──────────────── */
+@keyframes confetti-fall {
+  0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* ──────────────── Theme Transition ──────────────── */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 300ms ease, color 200ms ease, border-color 300ms ease, box-shadow 300ms ease !important;
+}
+
+/* ──────────────── Agent Scanning Effect ──────────────── */
+@keyframes agent-scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.agent-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  animation: agent-scan 2s ease-in-out infinite;
+}
+
+/* ──────────────── Agent Card Glow ──────────────── */
+@keyframes agent-glow-blue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 140, 255, 0), 0 4px 24px rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 20px 2px rgba(79, 140, 255, 0.08), 0 4px 24px rgba(0,0,0,0.1); }
+}
+
+@keyframes agent-glow-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 4px 24px rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 20px 2px rgba(245, 158, 11, 0.08), 0 4px 24px rgba(0,0,0,0.1); }
+}
+
+@keyframes agent-glow-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 4px 24px rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 20px 2px rgba(34, 197, 94, 0.08), 0 4px 24px rgba(0,0,0,0.1); }
+}
+
+@keyframes agent-glow-purple {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0), 0 4px 24px rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 20px 2px rgba(167, 139, 250, 0.08), 0 4px 24px rgba(0,0,0,0.1); }
+}
+
+/* ──────────────── Pipeline Connector ──────────────── */
+@keyframes pipeline-flow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes data-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ──────────────── Gauge Fill ──────────────── */
+@keyframes gauge-fill {
+  from { stroke-dashoffset: var(--gauge-circumference); }
+  to { stroke-dashoffset: var(--gauge-target); }
+}
+
+/* ──────────────── Agent Status Indicator ──────────────── */
+@keyframes status-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75%, 100% { transform: scale(2.5); opacity: 0; }
+}
+
+.status-indicator-active::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  animation: status-ping 1.5s ease-out infinite;
+}
+
+/* ──────────────── Terminal Text Fade ──────────────── */
+@keyframes terminal-line-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.terminal-line-enter {
+  animation: terminal-line-in 0.15s ease-out;
+}
+
+/* ──────────────── Number Ticker ──────────────── */
+@keyframes tick-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tick-in {
+  animation: tick-in 0.3s ease-out;
+}
