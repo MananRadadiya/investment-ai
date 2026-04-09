@@ -426,3 +426,182 @@ input[type="number"] {
 .tick-in {
   animation: tick-in 0.3s ease-out;
 }
+
+/* ──────────────── Simulator — Range Slider ──────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f8cff, #6366f1);
+  border: 3px solid var(--color-bg);
+  box-shadow: 0 0 12px rgba(79, 140, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(79, 140, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f8cff, #6366f1);
+  border: 3px solid var(--color-bg);
+  box-shadow: 0 0 12px rgba(79, 140, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  transition: transform 150ms ease;
+}
+
+/* ──────────────── Simulator — Glassmorphism ──────────────── */
+@keyframes sim-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.01); }
+}
+
+@keyframes sim-glow-rotate {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes sim-border-shimmer {
+  0% { border-color: rgba(79, 140, 255, 0.08); }
+  50% { border-color: rgba(167, 139, 250, 0.12); }
+  100% { border-color: rgba(79, 140, 255, 0.08); }
+}
+
+/* ──────────────── Simulator — Recharts Overrides ──────────────── */
+.recharts-sector {
+  transition: all 300ms ease !important;
+}
+
+.recharts-active-dot circle {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* ══════════════════════ LANDING PAGE ══════════════════════ */
+
+/* ─── Glow Card Hover Effects ─── */
+.landing-glow-card:hover {
+  border-color: var(--color-border-hover) !important;
+  box-shadow: 0 16px 48px var(--color-card-hover-shadow) !important;
+}
+
+.landing-glow-card:hover .landing-glow-overlay {
+  opacity: 1 !important;
+}
+
+/* ─── Nav Link Hover ─── */
+.landing-nav-link:hover {
+  color: var(--color-text) !important;
+  background: var(--color-surface) !important;
+}
+
+/* ─── Button Hovers ─── */
+.landing-theme-btn:hover {
+  background: var(--color-surface-hover) !important;
+  border-color: var(--color-border-hover) !important;
+  color: var(--color-text) !important;
+}
+
+.landing-login-btn:hover {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border-hover) !important;
+}
+
+.landing-cta-btn-nav:hover {
+  box-shadow: 0 8px 24px rgba(79, 140, 255, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+/* ─── Footer Links ─── */
+.landing-footer-link:hover {
+  color: var(--color-text) !important;
+}
+
+.landing-social-btn:hover {
+  background: var(--color-surface-hover) !important;
+  border-color: var(--color-border-hover) !important;
+  color: var(--color-text) !important;
+}
+
+/* ─── Responsive Grid: Landing Page ─── */
+@media (max-width: 1024px) {
+  .landing-hero-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .landing-features-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-showcase-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-footer-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-desktop-nav {
+    display: none !important;
+  }
+  .landing-mobile-menu-btn {
+    display: flex !important;
+  }
+  .landing-cta-btn-nav {
+    display: none !important;
+  }
+  .landing-login-btn {
+    display: none !important;
+  }
+  .landing-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .landing-steps-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .landing-steps-line {
+    display: none !important;
+  }
+  .landing-testimonials-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-pricing-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .landing-footer-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-steps-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

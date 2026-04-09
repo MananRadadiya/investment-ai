@@ -15,7 +15,7 @@ const navSections = [
   {
     label: 'Main',
     items: [
-      { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       { path: '/portfolio', icon: PieChart, label: 'Portfolio' },
       { path: '/market', icon: BarChart3, label: 'Market' },
       { path: '/transactions', icon: Receipt, label: 'Transactions' },
@@ -60,7 +60,7 @@ export default function Sidebar({ isOpen, onToggle }) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -130,7 +130,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  end={item.path === '/'}
+                  end={item.path === '/dashboard'}
                   className={({ isActive }) =>
                     `flex items-center gap-3 h-10 rounded-xl text-sm font-medium
                     transition-all duration-150 no-underline relative

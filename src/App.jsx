@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import DashboardLayout from './layouts/DashboardLayout';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
@@ -31,13 +32,22 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return children;
+}
+
+function LandingRoute() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <LandingPage />;
 }
 
 function AppRoutes() {
   return (
     <Routes>
+      {/* Landing page — public, redirects to dashboard if logged in */}
+      <Route path="/" element={<LandingRoute />} />
+
       <Route path="/login" element={
         <PublicRoute><Login /></PublicRoute>
       } />
@@ -45,7 +55,7 @@ function AppRoutes() {
         <ProtectedRoute><DashboardLayout /></ProtectedRoute>
       }>
         {/* Main */}
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/market" element={<Market />} />
         <Route path="/transactions" element={<TransactionHistory />} />
