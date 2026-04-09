@@ -24,6 +24,38 @@ import CopyTrading from './pages/CopyTrading';
 import Alerts from './pages/Alerts';
 import Billing from './pages/Billing';
 
+// AI & Intelligence
+import PortfolioOptimizer from './pages/PortfolioOptimizer';
+import SentimentDashboard from './pages/SentimentDashboard';
+import PatternRecognition from './pages/PatternRecognition';
+import RiskSimulator from './pages/RiskSimulator';
+import SmartAlerts from './pages/SmartAlerts';
+
+// Data & Visualization
+import MarketHeatmap from './pages/MarketHeatmap';
+import PortfolioXRay from './pages/PortfolioXRay';
+import CorrelationMatrix from './pages/CorrelationMatrix';
+import CandlestickChartPage from './pages/CandlestickChartPage';
+import EarningsCalendar from './pages/EarningsCalendar';
+
+// Trading & Portfolio
+import PaperTrading from './pages/PaperTrading';
+import Backtester from './pages/Backtester';
+import DCACalculator from './pages/DCACalculator';
+import TaxHarvesting from './pages/TaxHarvesting';
+import DividendTracker from './pages/DividendTracker';
+
+// Content & Education
+import Tutorials from './pages/Tutorials';
+import Glossary from './pages/Glossary';
+import StrategyBuilder from './pages/StrategyBuilder';
+import MarketReplay from './pages/MarketReplay';
+
+// Infrastructure
+import ExportImport from './pages/ExportImport';
+import PerformanceScore from './pages/PerformanceScore';
+import Collaboration from './pages/Collaboration';
+
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -71,6 +103,38 @@ function AppRoutes() {
         <Route path="/learn" element={<Learn />} />
         <Route path="/copy-trading" element={<CopyTrading />} />
         <Route path="/calendar" element={<CalendarPage />} />
+
+        {/* AI & Intelligence */}
+        <Route path="/portfolio-optimizer" element={<PortfolioOptimizer />} />
+        <Route path="/sentiment" element={<SentimentDashboard />} />
+        <Route path="/pattern-recognition" element={<PatternRecognition />} />
+        <Route path="/risk-simulator" element={<RiskSimulator />} />
+        <Route path="/smart-alerts" element={<SmartAlerts />} />
+
+        {/* Data & Visualization */}
+        <Route path="/heatmap" element={<MarketHeatmap />} />
+        <Route path="/portfolio-xray" element={<PortfolioXRay />} />
+        <Route path="/correlation-matrix" element={<CorrelationMatrix />} />
+        <Route path="/candlestick-chart" element={<CandlestickChartPage />} />
+        <Route path="/earnings-calendar" element={<EarningsCalendar />} />
+
+        {/* Trading & Portfolio */}
+        <Route path="/paper-trading" element={<PaperTrading />} />
+        <Route path="/backtester" element={<Backtester />} />
+        <Route path="/dca-calculator" element={<DCACalculator />} />
+        <Route path="/tax-harvesting" element={<TaxHarvesting />} />
+        <Route path="/dividends" element={<DividendTracker />} />
+
+        {/* Content & Education */}
+        <Route path="/tutorials" element={<Tutorials />} />
+        <Route path="/glossary" element={<Glossary />} />
+        <Route path="/strategy-builder" element={<StrategyBuilder />} />
+        <Route path="/market-replay" element={<MarketReplay />} />
+
+        {/* Infrastructure */}
+        <Route path="/export-import" element={<ExportImport />} />
+        <Route path="/performance-score" element={<PerformanceScore />} />
+        <Route path="/collaboration" element={<Collaboration />} />
 
         {/* Account */}
         <Route path="/profile" element={<Profile />} />

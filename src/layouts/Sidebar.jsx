@@ -9,6 +9,10 @@ import {
   TrendingUp, GraduationCap, Gift, HelpCircle,
   Target, CalendarDays, MessageSquare, BellRing,
   CreditCard, Users, FileText, Key,
+  Sparkles, Eye, AlertTriangle, Shield,
+  Grid, Layers, GitBranch, CandlestickChart,
+  ShoppingCart, History, Calculator, Scissors, DollarSign,
+  BookOpen, Award, Download, Clock, Mic,
 } from 'lucide-react';
 
 const navSections = [
@@ -22,6 +26,36 @@ const navSections = [
     ],
   },
   {
+    label: 'AI Intelligence',
+    items: [
+      { path: '/portfolio-optimizer', icon: Sparkles, label: 'AI Optimizer' },
+      { path: '/sentiment', icon: MessageSquare, label: 'Sentiment' },
+      { path: '/pattern-recognition', icon: Eye, label: 'Patterns' },
+      { path: '/risk-simulator', icon: AlertTriangle, label: 'Risk Simulator' },
+      { path: '/smart-alerts', icon: BellRing, label: 'Smart Alerts' },
+    ],
+  },
+  {
+    label: 'Trading',
+    items: [
+      { path: '/paper-trading', icon: ShoppingCart, label: 'Paper Trading' },
+      { path: '/backtester', icon: History, label: 'Backtester' },
+      { path: '/dca-calculator', icon: Calculator, label: 'DCA Calculator' },
+      { path: '/tax-harvesting', icon: Scissors, label: 'Tax Harvesting' },
+      { path: '/dividends', icon: DollarSign, label: 'Dividends' },
+    ],
+  },
+  {
+    label: 'Visualizations',
+    items: [
+      { path: '/heatmap', icon: Grid, label: 'Heatmap' },
+      { path: '/portfolio-xray', icon: Layers, label: 'Portfolio X-Ray' },
+      { path: '/correlation-matrix', icon: GitBranch, label: 'Correlation' },
+      { path: '/candlestick-chart', icon: CandlestickChart, label: 'Candlestick' },
+      { path: '/earnings-calendar', icon: CalendarDays, label: 'Earnings' },
+    ],
+  },
+  {
     label: 'AI Tools',
     items: [
       { path: '/agents', icon: Bot, label: 'AI Agents' },
@@ -31,12 +65,29 @@ const navSections = [
     ],
   },
   {
+    label: 'Learn',
+    items: [
+      { path: '/tutorials', icon: GraduationCap, label: 'Tutorials' },
+      { path: '/glossary', icon: BookOpen, label: 'Glossary' },
+      { path: '/strategy-builder', icon: GitBranch, label: 'Strategy Builder' },
+      { path: '/market-replay', icon: Clock, label: 'Market Replay' },
+    ],
+  },
+  {
     label: 'Discover',
     items: [
       { path: '/news', icon: Newspaper, label: 'News' },
       { path: '/learn', icon: GraduationCap, label: 'Learn' },
       { path: '/copy-trading', icon: Users, label: 'Copy Trading' },
       { path: '/calendar', icon: CalendarDays, label: 'Calendar' },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { path: '/export-import', icon: Download, label: 'Export / Import' },
+      { path: '/performance-score', icon: Award, label: 'Score' },
+      { path: '/collaboration', icon: Users, label: 'Collaborate' },
     ],
   },
   {
