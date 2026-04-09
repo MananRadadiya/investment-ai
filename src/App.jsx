@@ -69,8 +69,6 @@ function PublicRoute({ children }) {
 }
 
 function LandingRoute() {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return <LandingPage />;
 }
 
