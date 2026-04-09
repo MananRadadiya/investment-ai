@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { generateHistoricalData } from '../data/marketData';
 import { useState, useMemo } from 'react';
 import { formatCurrency } from '../utils/format';
+import ChartDownloadButton from './ChartDownloadButton';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -36,26 +37,29 @@ export default function PerformanceChart() {
     >
       <div className="flex items-center justify-between" style={{ marginBottom: '32px' }}>
         <span className="section-label">Performance</span>
-        <div className="flex" style={{ gap: '4px', padding: '4px', borderRadius: '12px', background: 'rgba(255,255,255,0.04)' }}>
-          {ranges.map((r) => (
-            <button
-              key={r}
-              onClick={() => setTimeRange(r)}
-              className="text-xs font-semibold cursor-pointer"
-              style={{
-                padding: '8px 16px', borderRadius: '8px', border: 'none',
-                transition: 'all 150ms',
-                background: timeRange === r ? 'rgba(79,140,255,0.12)' : 'transparent',
-                color: timeRange === r ? '#4f8cff' : '#484f58',
-              }}
-            >
-              {r}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <ChartDownloadButton chartId="performance-chart-container" filename="portfolio-performance" />
+          <div className="flex" style={{ gap: '4px', padding: '4px', borderRadius: '12px', background: 'rgba(255,255,255,0.04)' }}>
+            {ranges.map((r) => (
+              <button
+                key={r}
+                onClick={() => setTimeRange(r)}
+                className="text-xs font-semibold cursor-pointer"
+                style={{
+                  padding: '8px 16px', borderRadius: '8px', border: 'none',
+                  transition: 'all 150ms',
+                  background: timeRange === r ? 'rgba(79,140,255,0.12)' : 'transparent',
+                  color: timeRange === r ? '#4f8cff' : '#484f58',
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{ height: '280px' }}>
+      <div id="performance-chart-container" style={{ height: '280px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>

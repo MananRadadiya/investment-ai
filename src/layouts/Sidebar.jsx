@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import logoImg from '../assets/logo.png';
 import {
   LayoutDashboard, PieChart, Bot, BarChart3,
   FlaskConical, Settings, ChevronLeft, ChevronRight,
@@ -122,24 +123,45 @@ export default function Sidebar({ isOpen, onToggle }) {
       style={{ background: 'transparent' }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 h-20">
-        <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--color-accent)' }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="white" fillOpacity="0.9"/>
-          </svg>
-        </div>
+      <div className="flex items-center gap-3 px-5 h-20">
+        <motion.div
+          whileHover={{ scale: 1.08, rotate: 3 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+          style={{
+            width: '40px', height: '40px', borderRadius: '14px',
+            overflow: 'hidden', flexShrink: 0,
+            boxShadow: '0 4px 16px rgba(79,140,255,0.25), 0 0 0 1px rgba(79,140,255,0.1)',
+            background: 'linear-gradient(135deg, rgba(79,140,255,0.15), rgba(167,139,250,0.15))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <img src={logoImg} alt="AI Invest" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </motion.div>
         <AnimatePresence>
           {isOpen && (
-            <motion.span
+            <motion.div
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.15 }}
-              className="text-base font-semibold tracking-tight whitespace-nowrap overflow-hidden"
+              style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
             >
-              AI Invest
-            </motion.span>
+              <span style={{
+                fontSize: '17px', fontWeight: 800, letterSpacing: '-0.03em',
+                background: 'linear-gradient(135deg, #4f8cff 0%, #a78bfa 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                AI Invest
+              </span>
+              <span style={{
+                display: 'block', fontSize: '9px', fontWeight: 600,
+                letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: 'var(--color-text-dim)', marginTop: '-1px',
+              }}>
+                Intelligence
+              </span>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

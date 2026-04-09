@@ -11,6 +11,7 @@ import {
   Sparkles, Eye, EyeOff, RefreshCw, ChevronRight
 } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
+import ChartDownloadButton from '../components/ChartDownloadButton';
 
 /* ─── Animated Mesh Gradient Background ─── */
 function MeshBackground() {
@@ -574,12 +575,17 @@ export default function Portfolio() {
             <div style={{
               fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em',
               textTransform: 'uppercase', color: 'var(--color-text-dim)',
-              marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px',
+              marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <PieIcon style={{ width: '14px', height: '14px', color: '#a78bfa' }} />
-              Allocation
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <PieIcon style={{ width: '14px', height: '14px', color: '#a78bfa' }} />
+                Allocation
+              </span>
+              <ChartDownloadButton chartId="allocation-chart-container" filename="portfolio-allocation" />
             </div>
-            <AnimatedRingChart data={chartData} />
+            <div id="allocation-chart-container">
+              <AnimatedRingChart data={chartData} />
+            </div>
             {/* Legend */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '20px' }}>
               {chartData.map(item => (

@@ -20,6 +20,7 @@ import MarketMovers from '../components/MarketMovers';
 import AIRecommendationPanel from '../components/AIRecommendationPanel';
 import NotificationsPanel from '../components/NotificationsPanel';
 import Watchlist from '../components/Watchlist';
+import ChartDownloadButton from '../components/ChartDownloadButton';
 
 /* ─── Animated Grid Background ─── */
 function GridBackground() {
@@ -502,13 +503,16 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ opacity: 0.8, marginLeft: '24px' }}>
-              <MiniSparkline
-                data={sparklineValues}
-                color={isPositive ? '#22c55e' : '#ef4444'}
-                height={56}
-                width={160}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <ChartDownloadButton chartId="dashboard-portfolio-sparkline" filename="portfolio-overview" />
+              <div id="dashboard-portfolio-sparkline" style={{ opacity: 0.8 }}>
+                <MiniSparkline
+                  data={sparklineValues}
+                  color={isPositive ? '#22c55e' : '#ef4444'}
+                  height={56}
+                  width={160}
+                />
+              </div>
             </div>
           </div>
         </motion.div>
