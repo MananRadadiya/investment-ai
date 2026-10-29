@@ -1,663 +1,368 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { usePortfolio } from '../hooks/usePortfolio';
-import { useMarketData } from '../hooks/useMarketData';
-import { runAgentPipeline } from '../agents';
-import InvestmentForm from '../components/InvestmentForm';
-import AgentActivityPanel from '../components/AgentActivityPanel';
-import AIRecommendationPanel from '../components/AIRecommendationPanel';
-import AllocationChart from '../components/AllocationChart';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useProgress } from '../context/ProgressContext';
+import { calculateSIP, calculateLumpSum } from '../data/mutualFundData';
+import { formatINR, formatCompact } from '../utils/format';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, Legend } from 'recharts';
 import {
-  FlaskConical, Cpu, Zap, Shield, TrendingUp,
-  Sparkles, Activity, BrainCircuit, Atom
+  Calculator, TrendingUp, Target, ArrowRight,
+  BarChart3, Sparkles, IndianRupee,
 } from 'lucide-react';
 
-/* ─── Animated Particle Field (Canvas) ─── */
-function ParticleConstellation() {
-  const canvasRef = useRef(null);
+const fadeIn = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+};
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-    let particles = [];
-    const PARTICLE_COUNT = 80;
+// ─── SIP vs Lump Sum Visualizer ───
+function SIPCalculator() {
+  const [monthlyAmount, setMonthlyAmount] = useState(5000);
+  const [years, setYears] = useState(20);
+  const [expectedReturn, setExpectedReturn] = useState(12);
+  const { incrementStat } = useProgress();
 
-    const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    };
-    resize();
-    window.addEventListener('resize', resize);
+  const sipResult = useMemo(() => calculateSIP(monthlyAmount, years, expectedReturn), [monthlyAmount, years, expectedReturn]);
+  const fdResult = useMemo(() => calculateSIP(monthlyAmount, years, 7), [monthlyAmount, years]);
+  const lumpSumEquiv = useMemo(() => calculateLumpSum(monthlyAmount * 12, years, expectedReturn), [monthlyAmount, years, expectedReturn]);
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles.push({
-        x: Math.random() * canvas.offsetWidth,
-        y: Math.random() * canvas.offsetHeight,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: Math.random() * 1.5 + 0.5,
-        opacity: Math.random() * 0.5 + 0.1,
+  // Year-by-year projection for chart
+  const chartData = useMemo(() => {
+    const data = [];
+    for (let y = 0; y <= years; y++) {
+      const sip = y === 0 ? 0 : calculateSIP(monthlyAmount, y, expectedReturn).futureValue;
+      const fd = y === 0 ? 0 : calculateSIP(monthlyAmount, y, 7).futureValue;
+      const invested = monthlyAmount * y * 12;
+      data.push({
+        year: `Yr ${y}`,
+        'Index Fund SIP': Math.round(sip),
+        'FD Equivalent': Math.round(fd),
+        'Amount Invested': Math.round(invested),
       });
     }
+    return data;
+  }, [monthlyAmount, years, expectedReturn]);
 
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = w;
-        if (p.x > w) p.x = 0;
-        if (p.y < 0) p.y = h;
-        if (p.y > h) p.y = 0;
-      });
-
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(79, 140, 255, ${0.06 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Draw particles
-      particles.forEach((p) => {
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(79, 140, 255, ${p.opacity})`;
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }}
-    />
-  );
-}
-
-/* ─── Floating Orb ─── */
-function FloatingOrb({ color, size, top, left, delay }) {
-  return (
-    <motion.div
-      animate={{
-        y: [0, -25, 10, 0],
-        x: [0, 10, -10, 0],
-        scale: [1, 1.1, 0.95, 1],
-      }}
-      transition={{
-        repeat: Infinity,
-        duration: 8 + delay,
-        ease: 'easeInOut',
-        delay,
-      }}
-      style={{
-        position: 'absolute',
-        top,
-        left,
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: color,
-        filter: `blur(${parseInt(size) * 0.6}px)`,
-        opacity: 0.12,
-        pointerEvents: 'none',
-        zIndex: 0,
-      }}
-    />
-  );
-}
-
-/* ─── Animated Stat Chip ─── */
-function StatChip({ icon: Icon, label, value, color, delay }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '14px 20px',
-        background: 'rgba(255,255,255,0.03)',
-        borderRadius: '16px',
-        border: '1px solid rgba(255,255,255,0.04)',
-        backdropFilter: 'blur(20px)',
-        flex: 1,
-        minWidth: '160px',
-      }}
-    >
-      <div
-        style={{
-          width: '36px',
-          height: '36px',
-          borderRadius: '10px',
-          background: `${color}15`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon style={{ width: '16px', height: '16px', color }} />
-      </div>
-      <div>
-        <div style={{ fontSize: '11px', color: 'var(--color-text-dim)', fontWeight: 500, letterSpacing: '0.03em' }}>
-          {label}
-        </div>
-        <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
-          {value}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ─── Pipeline Step Indicator ─── */
-function PipelineSteps({ isRunning, agentLogs }) {
-  const steps = [
-    { name: 'Market', icon: TrendingUp, color: '#4f8cff' },
-    { name: 'Risk', icon: Shield, color: '#f59e0b' },
-    { name: 'Strategy', icon: BrainCircuit, color: '#a78bfa' },
-    { name: 'Execute', icon: Zap, color: '#22c55e' },
-  ];
-
-  const getStepStatus = (stepName) => {
-    const agentName = `${stepName} Agent`;
-    const hasStarted = agentLogs.some((l) => l.agent === agentName || l.text?.includes(stepName));
-    const nextStep = steps[steps.findIndex((s) => s.name === stepName) + 1];
-    const nextStarted = nextStep && agentLogs.some((l) => l.agent === `${nextStep.name} Agent` || l.text?.includes(nextStep.name));
-    const allDone = agentLogs.some((l) => l.agent === 'done');
-
-    if (allDone) return 'done';
-    if (hasStarted && (nextStarted || (!nextStep && allDone))) return 'done';
-    if (hasStarted) return 'active';
-    return 'pending';
+  const handleCalculate = () => {
+    incrementStat('sipCalculations');
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '16px 24px',
-        background: 'rgba(255,255,255,0.02)',
-        borderRadius: '16px',
-        border: '1px solid rgba(255,255,255,0.04)',
-        marginBottom: '28px',
-      }}
-    >
-      {steps.map((step, idx) => {
-        const status = isRunning || agentLogs.length > 0 ? getStepStatus(step.name) : 'pending';
-        const Icon = step.icon;
-
-        return (
-          <div key={step.name} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                flex: 1,
-              }}
-            >
-              <motion.div
-                animate={
-                  status === 'active'
-                    ? { boxShadow: [`0 0 0 0 ${step.color}00`, `0 0 20px 4px ${step.color}30`, `0 0 0 0 ${step.color}00`] }
-                    : {}
-                }
-                transition={status === 'active' ? { repeat: Infinity, duration: 1.5 } : {}}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background:
-                    status === 'done' ? `${step.color}20` :
-                    status === 'active' ? `${step.color}15` : 'rgba(255,255,255,0.03)',
-                  border:
-                    status === 'done' ? `1px solid ${step.color}40` :
-                    status === 'active' ? `1px solid ${step.color}30` : '1px solid rgba(255,255,255,0.04)',
-                  transition: 'all 300ms ease',
-                }}
-              >
-                <Icon
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    color: status !== 'pending' ? step.color : 'var(--color-text-dim)',
-                    transition: 'color 300ms ease',
-                  }}
-                />
-              </motion.div>
-              <div>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: status !== 'pending' ? step.color : 'var(--color-text-dim)',
-                    transition: 'color 300ms ease',
-                  }}
-                >
-                  {step.name}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--color-text-dim)' }}>
-                  {status === 'done' ? '✓ Complete' : status === 'active' ? 'Processing...' : 'Waiting'}
-                </div>
-              </div>
-            </div>
-            {idx < steps.length - 1 && (
-              <div
-                style={{
-                  flex: '0 0 auto',
-                  width: '32px',
-                  height: '2px',
-                  margin: '0 4px',
-                  borderRadius: '999px',
-                  background: status === 'done' ? `${step.color}40` : 'rgba(255,255,255,0.04)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {status === 'active' && (
-                  <motion.div
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '50%',
-                      height: '100%',
-                      background: `linear-gradient(90deg, transparent, ${step.color}, transparent)`,
-                      borderRadius: '999px',
-                    }}
-                  />
-                )}
-              </div>
-            )}
+    <div>
+      {/* Input Controls */}
+      <div className="panel" style={{ padding: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-5)' }}>
+          <div>
+            <label className="input-label">Monthly SIP Amount (₹)</label>
+            <input
+              type="range" min={500} max={50000} step={500}
+              value={monthlyAmount}
+              onChange={(e) => { setMonthlyAmount(+e.target.value); handleCalculate(); }}
+              style={{ width: '100%', accentColor: 'var(--color-trust)' }}
+            />
+            <p className="mono-number" style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-trust)', marginTop: 'var(--space-1)' }}>
+              {formatINR(monthlyAmount)}/month
+            </p>
           </div>
-        );
-      })}
-    </motion.div>
-  );
-}
+          <div>
+            <label className="input-label">Investment Duration (Years)</label>
+            <input
+              type="range" min={1} max={40} step={1}
+              value={years}
+              onChange={(e) => { setYears(+e.target.value); handleCalculate(); }}
+              style={{ width: '100%', accentColor: 'var(--color-learning)' }}
+            />
+            <p className="mono-number" style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-learning)', marginTop: 'var(--space-1)' }}>
+              {years} years
+            </p>
+          </div>
+          <div>
+            <label className="input-label">Expected Annual Return (%)</label>
+            <input
+              type="range" min={6} max={18} step={0.5}
+              value={expectedReturn}
+              onChange={(e) => { setExpectedReturn(+e.target.value); handleCalculate(); }}
+              style={{ width: '100%', accentColor: 'var(--color-growth)' }}
+            />
+            <p className="mono-number" style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-growth)', marginTop: 'var(--space-1)' }}>
+              {expectedReturn}% p.a.
+            </p>
+          </div>
+        </div>
+      </div>
 
-/* ─── Rotating Atom Logo ─── */
-function AtomLogo() {
-  return (
-    <div style={{ position: 'relative', width: '56px', height: '56px' }}>
-      {/* Core */}
-      <motion.div
-        animate={{ scale: [1, 1.2, 1] }}
-        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, #4f8cff, #6366f1)',
-          boxShadow: '0 0 24px 8px rgba(79,140,255,0.3)',
-        }}
-      />
-      {/* Orbits */}
-      {[0, 60, 120].map((rot, i) => (
-        <motion.div
-          key={i}
-          animate={{ rotate: 360 }}
-          transition={{
-            repeat: Infinity,
-            duration: 3 + i * 0.7,
-            ease: 'linear',
-          }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            border: '1px solid rgba(79,140,255,0.15)',
-            borderRadius: '50%',
-            transform: `rotateX(${60 + i * 10}deg) rotateZ(${rot}deg)`,
-          }}
-        >
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '-3px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: i === 0 ? '#4f8cff' : i === 1 ? '#a78bfa' : '#22c55e',
-              boxShadow: `0 0 8px 2px ${i === 0 ? 'rgba(79,140,255,0.5)' : i === 1 ? 'rgba(167,139,250,0.5)' : 'rgba(34,197,94,0.5)'}`,
-            }}
-          />
-        </motion.div>
-      ))}
+      {/* Results Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="panel" style={{ padding: 'var(--space-5)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            Total Invested
+          </p>
+          <p className="heading-tight mono-number" style={{ fontSize: 'var(--text-xl)' }}>
+            {formatCompact(sipResult.totalInvested)}
+          </p>
+        </div>
+        <div className="panel" style={{ padding: 'var(--space-5)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            Future Value (Index Fund)
+          </p>
+          <p className="heading-tight mono-number" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-growth)' }}>
+            {formatCompact(sipResult.futureValue)}
+          </p>
+        </div>
+        <div className="panel" style={{ padding: 'var(--space-5)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            Wealth Created
+          </p>
+          <p className="heading-tight mono-number" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-trust)' }}>
+            {formatCompact(sipResult.totalReturns)}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--color-growth)' }}>
+            +{sipResult.returnPercent}% total returns
+          </p>
+        </div>
+        <div className="panel" style={{ padding: 'var(--space-5)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            FD vs Index Fund Gap
+          </p>
+          <p className="heading-tight mono-number" style={{ fontSize: 'var(--text-xl)', color: 'var(--color-danger)' }}>
+            {formatCompact(sipResult.futureValue - fdResult.futureValue)}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+            Cost of not investing in equity
+          </p>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="panel" style={{ padding: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
+        <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-4)' }}>
+          Growth Projection — SIP vs FD vs Just Saving
+        </p>
+        <div style={{ height: 320 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="sipGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="fdGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6b7280" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#6b7280" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-ghost)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text-ghost)' }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+              <Tooltip
+                contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }}
+                formatter={(value) => formatINR(value)}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="Index Fund SIP" stroke="#10b981" fill="url(#sipGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="FD Equivalent" stroke="#6b7280" fill="url(#fdGrad)" strokeWidth={1.5} strokeDasharray="4 4" />
+              <Area type="monotone" dataKey="Amount Invested" stroke="#3b82f6" fill="none" strokeWidth={1} strokeDasharray="2 2" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Educational Insight */}
+      <div style={{
+        padding: 'var(--space-5)', borderRadius: 'var(--radius-sm)',
+        background: 'var(--color-learning-soft)', border: '1px solid rgba(245, 158, 11, 0.15)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+          <Sparkles style={{ width: 14, height: 14, color: 'var(--color-learning)' }} />
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-learning)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            What This Means
+          </span>
+        </div>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.7 }}>
+          By investing <strong>{formatINR(monthlyAmount)}/month</strong> for <strong>{years} years</strong>,
+          you invest {formatCompact(sipResult.totalInvested)} total.
+          In an Index Fund at {expectedReturn}%, this becomes <strong>{formatCompact(sipResult.futureValue)}</strong>.
+          In an FD at 7%, only {formatCompact(fdResult.futureValue)}.
+          {' '}The gap of <strong>{formatCompact(sipResult.futureValue - fdResult.futureValue)}</strong> is the cost of not investing in equity.
+          Remember: past performance doesn't guarantee future results, but historically NIFTY 50 has averaged ~12% over 20+ year periods.
+        </p>
+      </div>
     </div>
   );
 }
 
-/* ─── Simulation Counter ─── */
-function SimulationCounter() {
-  const [count, setCount] = useState(14329);
+// ─── Goal-Based Planning ───
+function GoalPlanner() {
+  const [goalType, setGoalType] = useState('retirement');
+  const [targetAmount, setTargetAmount] = useState(5000000);
+  const [years, setYears] = useState(30);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCount((c) => c + Math.floor(Math.random() * 3));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const goals = [
+    { id: 'emergency', label: '🛡️ Emergency Fund', defaultTarget: 150000, defaultYears: 1 },
+    { id: 'bike', label: '🏍️ Bike/Scooter', defaultTarget: 120000, defaultYears: 2 },
+    { id: 'wedding', label: '💒 Wedding', defaultTarget: 1500000, defaultYears: 5 },
+    { id: 'car', label: '🚗 Car', defaultTarget: 800000, defaultYears: 3 },
+    { id: 'house', label: '🏠 House Down Payment', defaultTarget: 2500000, defaultYears: 10 },
+    { id: 'education', label: '🎓 Higher Education', defaultTarget: 1000000, defaultYears: 5 },
+    { id: 'retirement', label: '🌅 Retirement', defaultTarget: 50000000, defaultYears: 30 },
+  ];
+
+  const selectedGoal = goals.find((g) => g.id === goalType);
+  const scenarios = [
+    { name: 'FD (7%)', rate: 7, color: '#6b7280' },
+    { name: 'PPF (7.1%)', rate: 7.1, color: '#3b82f6' },
+    { name: 'Hybrid Fund (10%)', rate: 10, color: '#f59e0b' },
+    { name: 'Index Fund (12%)', rate: 12, color: '#10b981' },
+    { name: 'Mid Cap (15%)', rate: 15, color: '#8b5cf6' },
+  ];
+
+  const results = useMemo(() => {
+    return scenarios.map((s) => {
+      const months = years * 12;
+      const monthlyRate = s.rate / 12 / 100;
+      const requiredSIP = Math.round(
+        targetAmount / (((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate))
+      );
+      return { ...s, requiredSIP };
+    });
+  }, [targetAmount, years]);
+
+  const handleGoalChange = (id) => {
+    const g = goals.find((x) => x.id === id);
+    setGoalType(id);
+    setTargetAmount(g.defaultTarget);
+    setYears(g.defaultYears);
+  };
 
   return (
-    <motion.span
-      key={count}
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: '12px',
-        color: 'var(--color-accent)',
-        fontWeight: 600,
-        tabularNums: true,
-      }}
-    >
-      {count.toLocaleString()} simulations run
-    </motion.span>
+    <div>
+      {/* Goal Selection */}
+      <div className="panel" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-3)' }}>
+          Select Your Goal
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+          {goals.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => handleGoalChange(g.id)}
+              style={{
+                padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+                background: goalType === g.id ? 'var(--color-trust-soft)' : 'var(--surface-2)',
+                border: goalType === g.id ? '1px solid var(--color-trust)' : '1px solid transparent',
+                color: goalType === g.id ? 'var(--color-trust)' : 'var(--text-secondary)',
+                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'var(--font-sans)', transition: 'all 150ms',
+              }}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Target & Timeline */}
+      <div className="panel" style={{ padding: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+          <div>
+            <label className="input-label">Target Amount (₹)</label>
+            <input
+              type="range" min={50000} max={100000000} step={50000}
+              value={targetAmount}
+              onChange={(e) => setTargetAmount(+e.target.value)}
+              style={{ width: '100%', accentColor: 'var(--color-trust)' }}
+            />
+            <p className="mono-number" style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-trust)', marginTop: 'var(--space-1)' }}>
+              {formatCompact(targetAmount)}
+            </p>
+          </div>
+          <div>
+            <label className="input-label">Timeline</label>
+            <input
+              type="range" min={1} max={40} step={1}
+              value={years}
+              onChange={(e) => setYears(+e.target.value)}
+              style={{ width: '100%', accentColor: 'var(--color-learning)' }}
+            />
+            <p className="mono-number" style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-learning)', marginTop: 'var(--space-1)' }}>
+              {years} years
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Required SIP Comparison */}
+      <div className="panel" style={{ padding: 'var(--space-5)' }}>
+        <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-4)' }}>
+          Required Monthly SIP to Reach {formatCompact(targetAmount)} in {years} Years
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {results.map((r) => (
+            <div key={r.name} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: 'var(--space-3) var(--space-4)', borderRadius: 'var(--radius-sm)',
+              background: 'var(--surface-1)',
+            }}>
+              <span style={{ fontSize: '13px', color: r.color, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <div style={{ width: 8, height: 8, borderRadius: 'var(--radius-full)', background: r.color }} />
+                {r.name}
+              </span>
+              <span className="mono-number" style={{ fontSize: '15px', fontWeight: 700 }}>
+                {formatINR(r.requiredSIP)}/month
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   SIMULATOR PAGE — Main Component
-   ═══════════════════════════════════════════════════════════════════ */
+// ═══════ MAIN COMPONENT ═══════
 export default function Simulator() {
-  const assets = useMarketData();
-  const { savePortfolio } = usePortfolio();
-  const [agentResult, setAgentResult] = useState(null);
-  const [agentLogs, setAgentLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-
-  const handleRunSimulation = useCallback(async ({ amount, risk }) => {
-    setIsRunning(true);
-    setAgentLogs([]);
-    setAgentResult(null);
-    setShowResults(false);
-
-    const result = await runAgentPipeline(amount, risk, (log) => {
-      setAgentLogs((prev) => [...prev, log]);
-    });
-
-    setAgentResult(result);
-    setIsRunning(false);
-    // Stagger reveal of results
-    setTimeout(() => setShowResults(true), 300);
-  }, []);
-
-  const handleSavePortfolio = useCallback(() => {
-    if (!agentResult) return;
-    const { execution } = agentResult;
-    savePortfolio({
-      totalInvestment: execution.totalInvestment,
-      assets: execution.trades.map((t) => ({
-        symbol: t.symbol,
-        name: t.name,
-        allocation: t.allocation,
-        amount: t.amount,
-        buyPrice: assets.find((a) => a.symbol === t.symbol)?.price || 0,
-        color: t.color,
-      })),
-    });
-  }, [agentResult, assets, savePortfolio]);
+  const [tab, setTab] = useState('sip');
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      style={{ position: 'relative', minHeight: '100vh' }}
-    >
-      {/* ─── Background Effects ─── */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <ParticleConstellation />
-        <FloatingOrb color="#4f8cff" size="300px" top="-5%" left="60%" delay={0} />
-        <FloatingOrb color="#a78bfa" size="250px" top="40%" left="-10%" delay={2} />
-        <FloatingOrb color="#22c55e" size="200px" top="70%" left="80%" delay={4} />
+    <motion.div {...fadeIn}>
+      {/* Header */}
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <h1 className="heading-tight" style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-1)' }}>
+          Investment Simulator 🧪
+        </h1>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+          See how your money grows with SIP, compare with FD, and plan for life goals — all in ₹
+        </p>
       </div>
 
-      {/* ─── Content ─── */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-
-        {/* ═══ Hero Header ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          style={{
-            position: 'relative',
-            padding: '40px 36px 36px',
-            marginBottom: '32px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, rgba(79,140,255,0.06) 0%, rgba(99,102,241,0.04) 50%, rgba(167,139,250,0.06) 100%)',
-            border: '1px solid rgba(79,140,255,0.08)',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Grid pattern overlay */}
-          <div
+      {/* Tabs */}
+      <div style={{
+        display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-6)',
+        background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)', padding: 2, width: 'fit-content',
+      }}>
+        {[
+          { id: 'sip', label: 'SIP Calculator', icon: Calculator },
+          { id: 'goal', label: 'Goal Planner', icon: Target },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
             style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: `
-                linear-gradient(rgba(79,140,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(79,140,255,0.03) 1px, transparent 1px)
-              `,
-              backgroundSize: '32px 32px',
-              maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
-              WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
-              pointerEvents: 'none',
+              padding: '8px 20px', borderRadius: 'var(--radius-sm)',
+              background: tab === id ? 'var(--bg-secondary)' : 'transparent',
+              border: tab === id ? '1px solid var(--border-subtle)' : '1px solid transparent',
+              color: tab === id ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+              transition: 'all 150ms',
             }}
-          />
-
-          {/* Shimmer line */}
-          <motion.div
-            animate={{ x: ['-100%', '200%'] }}
-            transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '30%',
-              height: '1px',
-              background: 'linear-gradient(90deg, transparent, rgba(79,140,255,0.4), transparent)',
-            }}
-          />
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ perspective: '200px' }}>
-                <AtomLogo />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                  <h1 style={{
-                    fontSize: '28px',
-                    fontWeight: 700,
-                    letterSpacing: '-0.03em',
-                    background: 'linear-gradient(135deg, var(--color-text) 0%, var(--color-accent) 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}>
-                    AI Simulator
-                  </h1>
-                  <motion.div
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: '999px',
-                      background: 'rgba(34,197,94,0.12)',
-                      border: '1px solid rgba(34,197,94,0.2)',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      color: '#22c55e',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Live
-                  </motion.div>
-                </div>
-                <p style={{
-                  fontSize: '14px',
-                  color: 'var(--color-text-muted)',
-                  maxWidth: '440px',
-                  lineHeight: 1.5,
-                }}>
-                  Configure your parameters and unleash a multi-agent AI pipeline that analyzes markets,
-                  evaluates risk, and optimizes your portfolio in real-time.
-                </p>
-              </div>
-            </div>
-
-            {/* Counter badge */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              gap: '8px',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '12px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.05)',
-              }}>
-                <Activity style={{ width: '14px', height: '14px', color: 'var(--color-accent)' }} />
-                <SimulationCounter />
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-dim)' }}>
-                Powered by 4 AI Agents
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ═══ Live Stats Row ═══ */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
-          <StatChip icon={Cpu} label="AI Agents" value="4 Active" color="#4f8cff" delay={0.15} />
-          <StatChip icon={Zap} label="Avg. Speed" value="< 2.1s" color="#f59e0b" delay={0.25} />
-          <StatChip icon={Shield} label="Risk Models" value="3 Profiles" color="#a78bfa" delay={0.35} />
-          <StatChip icon={Sparkles} label="Accuracy" value="94.7%" color="#22c55e" delay={0.45} />
-        </div>
-
-        {/* ═══ Pipeline Steps ═══ */}
-        <PipelineSteps isRunning={isRunning} agentLogs={agentLogs} />
-
-        {/* ═══ Main Grid: Form + Terminal ═══ */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-            gap: '24px',
-          }}
-        >
-          <InvestmentForm onSubmit={handleRunSimulation} isRunning={isRunning} />
-          <AgentActivityPanel logs={agentLogs} isRunning={isRunning} />
-        </div>
-
-        {/* ═══ Results Section ═══ */}
-        <AnimatePresence>
-          {agentResult && showResults && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {/* Divider */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                margin: '48px 0 32px',
-              }}>
-                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(79,140,255,0.2), transparent)' }} />
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 20px',
-                  borderRadius: '999px',
-                  background: 'rgba(79,140,255,0.08)',
-                  border: '1px solid rgba(79,140,255,0.12)',
-                }}>
-                  <Sparkles style={{ width: '14px', height: '14px', color: '#4f8cff' }} />
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#4f8cff', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                    Simulation Results
-                  </span>
-                </div>
-                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(79,140,255,0.2), transparent)' }} />
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-                  gap: '24px',
-                }}
-              >
-                <AIRecommendationPanel result={agentResult} onInvest={handleSavePortfolio} />
-                <AllocationChart allocation={agentResult.strategy.allocation} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          >
+            <Icon style={{ width: 14, height: 14 }} />
+            {label}
+          </button>
+        ))}
       </div>
+
+      {tab === 'sip' ? <SIPCalculator /> : <GoalPlanner />}
     </motion.div>
   );
 }

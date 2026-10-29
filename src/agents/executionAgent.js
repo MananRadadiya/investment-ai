@@ -1,96 +1,82 @@
-// Execution Agent — simulates placing trades with realistic details
-import { getMarketData } from '../data/marketData';
+// ─── Simulation Agent — Runs forward-looking investment simulations ───
+// Replaces the old Execution Agent (which simulated trade execution)
 
-export function runExecutionAgent(strategyResult, investmentAmount = 50000) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Support standalone mode
-      const assets = getMarketData();
-      const allocation = strategyResult?.allocation || assets.slice(0, 10).map((a) => ({
-        symbol: a.symbol,
-        name: a.name,
-        allocation: +(1 / 10).toFixed(3),
-        category: a.category,
-        color: a.color,
-      }));
+import { calculateSIP, calculateLumpSum } from '../data/mutualFundData';
 
-      const startTime = Date.now();
+export async function runSimulationAgent(input) {
+  const steps = [];
 
-      const trades = allocation.map((asset) => {
-        const amount = +(investmentAmount * asset.allocation).toFixed(2);
-        const assetData = assets.find((a) => a.symbol === asset.symbol);
-        const price = assetData?.price || 100;
+  const monthlyAmount = input.monthlyAmount || 5000;
+  const years = input.years || 20;
+  const scenarios = [
+    { name: 'Conservative (FD)', returnRate: 7, color: '#6b7280' },
+    { name: 'Moderate (Hybrid Fund)', returnRate: 10, color: '#3b82f6' },
+    { name: 'Growth (Index Fund)', returnRate: 12, color: '#10b981' },
+    { name: 'Aggressive (Mid Cap)', returnRate: 15, color: '#f59e0b' },
+  ];
 
-        // Simulated slippage (0.01% - 0.15%)
-        const slippagePct = +(Math.random() * 0.14 + 0.01).toFixed(3);
-        const slippageAmount = +(amount * slippagePct / 100).toFixed(2);
-
-        // Simulated fee (0.05% - 0.25%)
-        const feePct = +(Math.random() * 0.2 + 0.05).toFixed(3);
-        const feeAmount = +(amount * feePct / 100).toFixed(2);
-
-        // Shares/units purchased
-        const fillPrice = +(price * (1 + slippagePct / 100)).toFixed(2);
-        const units = +((amount - feeAmount - slippageAmount) / fillPrice).toFixed(4);
-
-        return {
-          symbol: asset.symbol,
-          name: asset.name,
-          action: 'BUY',
-          amount,
-          allocation: asset.allocation,
-          price,
-          fillPrice,
-          units,
-          slippage: slippageAmount,
-          fee: feeAmount,
-          netAmount: +(amount - feeAmount - slippageAmount).toFixed(2),
-          status: Math.random() > 0.02 ? 'filled' : 'partial',
-          color: asset.color,
-          category: asset.category || 'unknown',
-          timestamp: Date.now() + Math.random() * 500,
-        };
-      });
-
-      const executionTime = +((Date.now() - startTime + Math.random() * 800 + 200) / 1000).toFixed(3);
-      const totalAllocated = trades.reduce((sum, t) => sum + t.amount, 0);
-      const totalFees = trades.reduce((sum, t) => sum + t.fee, 0);
-      const totalSlippage = trades.reduce((sum, t) => sum + t.slippage, 0);
-      const filledCount = trades.filter((t) => t.status === 'filled').length;
-
-      // P&L projections (simulated)
-      const projections = {
-        day1: +((Math.random() * 4 - 1.5) * investmentAmount / 100).toFixed(2),
-        week1: +((Math.random() * 8 - 2) * investmentAmount / 100).toFixed(2),
-        month1: +((Math.random() * 15 - 3) * investmentAmount / 100).toFixed(2),
-        month3: +((Math.random() * 25 - 5) * investmentAmount / 100).toFixed(2),
-      };
-
-      resolve({
-        agent: 'Execution Agent',
-        timestamp: Date.now(),
-        trades,
-        totalAllocated: +totalAllocated.toFixed(2),
-        totalInvestment: investmentAmount,
-        totalFees: +totalFees.toFixed(2),
-        totalSlippage: +totalSlippage.toFixed(2),
-        filledCount,
-        totalTrades: trades.length,
-        executionTime: `${executionTime}s`,
-        fillRate: Math.round((filledCount / trades.length) * 100),
-        projections,
-        logs: [
-          'Allocating funds to exchange...',
-          `Processing ${trades.length} trade orders...`,
-          ...trades.slice(0, 6).map((t) => `  ✓ ${t.action} ${t.units} ${t.symbol} @ $${t.fillPrice.toLocaleString()}`),
-          trades.length > 6 ? `  ... and ${trades.length - 6} more trades` : null,
-          `Total allocated: $${totalAllocated.toLocaleString()}`,
-          `Total fees: $${totalFees.toFixed(2)} | Slippage: $${totalSlippage.toFixed(2)}`,
-          `Fill rate: ${Math.round((filledCount / trades.length) * 100)}% (${filledCount}/${trades.length})`,
-          `Execution time: ${executionTime}s`,
-          'All trades executed successfully ✓',
-        ].filter(Boolean),
-      });
-    }, 500);
+  steps.push({
+    agent: '🧪 Simulation Agent',
+    action: 'Setting up simulation',
+    status: 'processing',
+    detail: `Simulating ₹${monthlyAmount.toLocaleString('en-IN')}/month SIP for ${years} years across 4 scenarios`,
+    timestamp: Date.now(),
   });
+
+  await new Promise((r) => setTimeout(r, 700));
+
+  // Run simulations
+  const results = scenarios.map((s) => {
+    const sipResult = calculateSIP(monthlyAmount, years, s.returnRate);
+    return {
+      ...s,
+      ...sipResult,
+    };
+  });
+
+  steps.push({
+    agent: '🧪 Simulation Agent',
+    action: 'Computing compounding projections',
+    status: 'processing',
+    detail: `At ${scenarios[2].returnRate}% (NIFTY 50 historical): ₹${monthlyAmount.toLocaleString('en-IN')}/month → ₹${results[2].futureValue.toLocaleString('en-IN')}`,
+    timestamp: Date.now(),
+  });
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  // Generate year-by-year projection for primary scenario
+  const yearlyProjection = [];
+  for (let y = 1; y <= years; y++) {
+    const sipResult = calculateSIP(monthlyAmount, y, 12);
+    const fdResult = calculateSIP(monthlyAmount, y, 7);
+    yearlyProjection.push({
+      year: y,
+      invested: sipResult.totalInvested,
+      indexFund: sipResult.futureValue,
+      fd: fdResult.futureValue,
+      gap: sipResult.futureValue - fdResult.futureValue,
+    });
+  }
+
+  steps.push({
+    agent: '🧪 Simulation Agent',
+    action: 'Simulation complete',
+    status: 'complete',
+    detail: `The difference between FD and Index Fund over ${years} years: ₹${(results[2].futureValue - results[0].futureValue).toLocaleString('en-IN')}`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    steps,
+    result: {
+      monthlyAmount,
+      years,
+      totalInvested: results[0].totalInvested,
+      scenarios: results,
+      yearlyProjection,
+      insight: `By investing ₹${monthlyAmount.toLocaleString('en-IN')}/month for ${years} years, you invest ₹${results[0].totalInvested.toLocaleString('en-IN')} total. In an Index Fund at 12%, this becomes ₹${results[2].futureValue.toLocaleString('en-IN')}. In an FD at 7%, only ₹${results[0].futureValue.toLocaleString('en-IN')}. The gap of ₹${(results[2].futureValue - results[0].futureValue).toLocaleString('en-IN')} is the cost of not investing in equity.`,
+      whatDidYouLearn: 'The biggest risk is not market volatility — it\'s keeping all your money in low-return instruments and losing to inflation. Time in the market beats timing the market.',
+      relatedLesson: 'mutual-funds',
+    },
+  };
 }

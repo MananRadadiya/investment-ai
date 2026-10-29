@@ -1,79 +1,77 @@
-// Risk Agent — calculates portfolio risk score with deep analysis
-import { getMarketData } from '../data/marketData';
+// ─── Risk Literacy Agent — Teaches users to understand risk ───
+// Replaces the old Risk Agent (which calculated trading risk metrics)
 
-export function runRiskAgent(marketResult, riskLevel = 'moderate') {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Support standalone mode — use live market data if no result passed
-      const assets = marketResult?.assets || getMarketData();
-      const avgChange = marketResult?.avgChange ??
-        +(assets.reduce((sum, a) => sum + a.changePercent, 0) / assets.length).toFixed(2);
+const riskProfiles = {
+  conservative: {
+    profile: 'Conservative',
+    allocation: { equity: 20, debt: 60, gold: 10, fd: 10 },
+    description: 'Prioritizes capital preservation over growth. Best for retirees, short-term goals, or risk-averse investors.',
+    indianInstruments: ['PPF (7.1%)', 'FD (6-7.5%)', 'Debt Mutual Funds', 'RBI Bonds', 'Sovereign Gold Bond'],
+    expectedReturn: '6-8% annually',
+    riskExplanation: 'Your money is very safe but grows slowly. Inflation may eat into real returns over long periods.',
+  },
+  moderate: {
+    profile: 'Moderate',
+    allocation: { equity: 50, debt: 30, gold: 10, fd: 10 },
+    description: 'Balanced approach with growth potential and reasonable protection. Suitable for medium-term goals (5-10 years).',
+    indianInstruments: ['Index Funds (NIFTY 50)', 'Balanced/Hybrid Mutual Funds', 'PPF', 'NPS', 'ELSS'],
+    expectedReturn: '10-12% annually',
+    riskExplanation: 'Your portfolio may drop 15-20% in bad years but historically recovers within 2-3 years.',
+  },
+  aggressive: {
+    profile: 'Aggressive',
+    allocation: { equity: 75, debt: 15, gold: 5, fd: 5 },
+    description: 'Maximizes long-term growth, accepts short-term volatility. Best for young investors with 15+ year horizons.',
+    indianInstruments: ['Mid Cap Funds', 'Small Cap Funds', 'Direct Stock Investing', 'International Index Funds', 'NPS (Equity)'],
+    expectedReturn: '12-15% annually',
+    riskExplanation: 'Your portfolio could drop 30-40% in crashes (like 2008, 2020) but has the highest long-term growth potential.',
+  },
+};
 
-      const volatility = assets.reduce((sum, a) => sum + Math.abs(a.changePercent), 0) / assets.length;
+export async function runRiskLiteracyAgent(input) {
+  const steps = [];
 
-      const riskMultiplier = { conservative: 0.6, moderate: 1.0, aggressive: 1.5 }[riskLevel] || 1.0;
-      const riskScore = Math.min(100, Math.round(volatility * 20 * riskMultiplier));
-
-      const maxDrawdown = +(volatility * 3.5 * riskMultiplier).toFixed(1);
-      const sharpeRatio = +(avgChange / Math.max(volatility, 0.01)).toFixed(2);
-
-      // Value at Risk (95% confidence, 1-day horizon) — simulated
-      const portfolioValue = 50000;
-      const valueAtRisk = +(portfolioValue * volatility * 0.0165 * riskMultiplier).toFixed(2);
-
-      // Beta calculation (simulated)
-      const beta = +(0.6 + Math.random() * 0.8).toFixed(2);
-
-      // Concentration risk
-      const categoryCount = {};
-      assets.forEach((a) => {
-        categoryCount[a.category] = (categoryCount[a.category] || 0) + 1;
-      });
-      const maxConcentration = Math.max(...Object.values(categoryCount));
-      const concentrationRisk = Math.round((maxConcentration / assets.length) * 100);
-
-      // Risk breakdown by category
-      const riskByCategory = {};
-      assets.forEach((a) => {
-        if (!riskByCategory[a.category]) riskByCategory[a.category] = { totalVol: 0, count: 0 };
-        riskByCategory[a.category].totalVol += Math.abs(a.changePercent);
-        riskByCategory[a.category].count++;
-      });
-      const categoryRisk = Object.entries(riskByCategory).map(([cat, data]) => ({
-        category: cat,
-        avgVolatility: +(data.totalVol / data.count).toFixed(2),
-        riskContribution: Math.round((data.totalVol / (volatility * assets.length)) * 100),
-      })).sort((a, b) => b.riskContribution - a.riskContribution);
-
-      const recommendation = riskScore > 70 ? 'reduce exposure' : riskScore > 40 ? 'maintain position' : 'increase exposure';
-
-      resolve({
-        agent: 'Risk Agent',
-        timestamp: Date.now(),
-        riskScore,
-        riskLevel,
-        volatility: +volatility.toFixed(2),
-        maxDrawdown,
-        sharpeRatio,
-        valueAtRisk,
-        beta,
-        concentrationRisk,
-        categoryRisk,
-        recommendation,
-        logs: [
-          'Calculating portfolio volatility...',
-          `Portfolio volatility index: ${volatility.toFixed(2)}`,
-          `Risk score: ${riskScore}/100 (${riskLevel})`,
-          `Maximum drawdown estimate: -${maxDrawdown}%`,
-          `Sharpe ratio: ${sharpeRatio}`,
-          `Value at Risk (95% CI): $${valueAtRisk.toLocaleString()}`,
-          `Portfolio beta: ${beta}`,
-          `Concentration risk: ${concentrationRisk}%`,
-          `Highest risk: ${categoryRisk[0]?.category} (${categoryRisk[0]?.riskContribution}% contribution)`,
-          `Recommendation: ${recommendation.charAt(0).toUpperCase() + recommendation.slice(1)}`,
-          'Risk assessment complete ✓',
-        ],
-      });
-    }, 600);
+  steps.push({
+    agent: '🛡️ Risk Literacy Agent',
+    action: 'Assessing risk understanding',
+    status: 'processing',
+    detail: `Evaluating risk profile for: ${input.riskTolerance || 'moderate'} tolerance, ${input.timeHorizon || '10'} year horizon`,
+    timestamp: Date.now(),
   });
+
+  await new Promise((r) => setTimeout(r, 700));
+
+  const profile = riskProfiles[input.riskTolerance || 'moderate'];
+
+  steps.push({
+    agent: '🛡️ Risk Literacy Agent',
+    action: 'Building risk education',
+    status: 'processing',
+    detail: `Profile: ${profile.profile} — ${profile.description}`,
+    timestamp: Date.now(),
+  });
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  steps.push({
+    agent: '🛡️ Risk Literacy Agent',
+    action: 'Risk assessment complete',
+    status: 'complete',
+    detail: `Recommended allocation: ${profile.allocation.equity}% equity, ${profile.allocation.debt}% debt, ${profile.allocation.gold}% gold`,
+    timestamp: Date.now(),
+  });
+
+  return {
+    steps,
+    result: {
+      profile: profile.profile,
+      allocation: profile.allocation,
+      description: profile.description,
+      instruments: profile.indianInstruments,
+      expectedReturn: profile.expectedReturn,
+      riskExplanation: profile.riskExplanation,
+      whatDidYouLearn: 'Risk is not about avoiding losses — it\'s about understanding the tradeoff between safety and growth. The right risk level depends on YOUR timeline and goals.',
+      relatedLesson: 'advanced-portfolio',
+    },
+  };
 }

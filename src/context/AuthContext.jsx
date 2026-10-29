@@ -3,22 +3,20 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 const DEMO_USER = {
-  email: 'demo@aiinvest.com',
+  email: 'manan@bharatinvestai.in',
   password: 'demo1234',
-  name: 'Alex Morgan',
+  name: 'Manan Radadiya',
   avatar: null,
-  plan: 'Pro',
-  memberSince: '2024-03-15',
-  totalTrades: 847,
-  successRate: 73.2,
-  bestTrade: '+42.8%',
-  portfolioHigh: '$284,500',
+  location: 'Ahmedabad, Gujarat',
+  persona: 'student',
+  memberSince: '2026-08-01',
+  financialLiteracyScore: null,
 };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('ai-invest-user');
+      const saved = localStorage.getItem('bharat-investai-user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -29,15 +27,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     try {
       if (user) {
-        localStorage.setItem('ai-invest-user', JSON.stringify(user));
+        localStorage.setItem('bharat-investai-user', JSON.stringify(user));
       } else {
-        localStorage.removeItem('ai-invest-user');
+        localStorage.removeItem('bharat-investai-user');
       }
     } catch {
       // localStorage may be unavailable
     }
   }, [user]);
 
+  // Standard login with email/password
   const login = (email, password) => {
     setLoginError('');
     if (email === DEMO_USER.email && password === DEMO_USER.password) {
@@ -45,16 +44,35 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return true;
     }
-    setLoginError('Invalid credentials. Try the demo account!');
+    setLoginError('Invalid credentials. Use the demo account or click "Start Demo".');
     return false;
+  };
+
+  // One-click demo login (for presentations)
+  const loginAsDemo = () => {
+    const { password: _, ...userData } = DEMO_USER;
+    setUser(userData);
+    return true;
   };
 
   const logout = () => {
     setUser(null);
   };
 
+  const updateUser = (updates) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loginError, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      loginAsDemo,
+      logout,
+      loginError,
+      isAuthenticated: !!user,
+      updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, LogIn, Zap } from 'lucide-react';
+import { Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
 
 export default function Login() {
-  const { login, loginError } = useAuth();
+  const { login, loginAsDemo, loginError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,217 +13,172 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Fake delay for realism
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
     login(email, password);
     setIsLoading(false);
   };
 
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    await new Promise((r) => setTimeout(r, 400));
+    loginAsDemo();
+    setIsLoading(false);
+  };
+
   const fillDemo = () => {
-    setEmail('demo@aiinvest.com');
+    setEmail('manan@bharatinvestai.in');
     setPassword('demo1234');
   };
 
   return (
-    <div className="login-bg min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ padding: '20px' }}>
-      {/* Animated orbs */}
-      <div className="login-orb"
-        style={{ width: '500px', height: '500px', background: '#4f8cff', top: '-120px', right: '-80px', animationDelay: '0s' }} />
-      <div className="login-orb"
-        style={{ width: '400px', height: '400px', background: '#a78bfa', bottom: '-100px', left: '-60px', animationDelay: '3s' }} />
-      <div className="login-orb"
-        style={{ width: '300px', height: '300px', background: '#22c55e', top: '40%', left: '60%', animationDelay: '5s', opacity: 0.08 }} />
-
+    <div className="login-bg" style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 'var(--space-5)',
+    }}>
       <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-card relative z-10 w-full"
-        style={{ maxWidth: '440px', padding: '48px 40px' }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          width: '100%', maxWidth: 400,
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 'var(--space-10) var(--space-8)',
+          position: 'relative', zIndex: 1,
+        }}
       >
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-center"
-          style={{ gap: '12px', marginBottom: '40px' }}
-        >
-          <div className="flex items-center justify-center"
-            style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, #4f8cff, #a78bfa)' }}>
-            <Zap style={{ width: '24px', height: '24px', color: 'white' }} />
+        {/* Brand */}
+        <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, var(--color-trust), var(--color-ai))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto var(--space-4)',
+            fontSize: '24px', fontWeight: 700, color: '#fff',
+          }}>
+            ◇
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ lineHeight: 1.2 }}>AI Invest</h1>
-            <p className="text-xs" style={{ color: 'var(--color-text-dim)', marginTop: '2px' }}>Intelligent Portfolio Manager</p>
-          </div>
-        </motion.div>
+          <h1 className="heading-tight" style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--space-1)' }}>
+            Bharat InvestAI
+          </h1>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>
+            Financial Literacy for Every Indian
+          </p>
+        </div>
 
-        {/* Heading */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center"
-          style={{ marginBottom: '32px' }}
-        >
-          <h2 className="text-xl font-semibold" style={{ marginBottom: '8px' }}>Welcome back</h2>
-          <p className="text-sm" style={{ color: 'var(--color-text-dim)' }}>Sign in to your account to continue</p>
-        </motion.div>
-
-        {/* Demo hint */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
-          onClick={fillDemo}
-          className="cursor-pointer"
+        {/* One-Click Demo */}
+        <button
+          onClick={handleDemoLogin}
+          disabled={isLoading}
+          className="btn-primary"
           style={{
-            padding: '14px 16px', marginBottom: '28px', borderRadius: '14px',
-            background: 'rgba(79, 140, 255, 0.08)', border: '1px solid rgba(79, 140, 255, 0.15)',
-            transition: 'all 200ms',
+            width: '100%', height: 44, marginBottom: 'var(--space-6)',
+            fontSize: '15px', borderRadius: 'var(--radius-sm)',
           }}
         >
-          <p className="text-xs font-semibold" style={{ color: '#4f8cff', marginBottom: '4px' }}>
-            🎯 Demo Account — Click to auto-fill
-          </p>
-          <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>
-            <span className="font-mono">demo@aiinvest.com</span> / <span className="font-mono">demo1234</span>
-          </p>
-        </motion.div>
+          {isLoading ? 'Starting...' : 'Start Demo'}
+          <ArrowRight style={{ width: 16, height: 16 }} />
+        </button>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            style={{ marginBottom: '20px' }}
-          >
-            <label className="block text-xs font-medium" style={{ color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-              Email
-            </label>
+        {/* Divider */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+          marginBottom: 'var(--space-6)',
+        }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+          <span style={{ fontSize: '11px', color: 'var(--text-ghost)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            or sign in
+          </span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div>
+            <label className="input-label">Email</label>
             <input
-              id="login-email"
+              className="input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="manan@bharatinvestai.in"
               required
-              className="w-full text-sm focus:outline-none"
-              style={{
-                padding: '14px 16px', background: 'rgba(255,255,255,0.04)',
-                borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)',
-                color: 'var(--color-text)', transition: 'all 200ms',
-              }}
             />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-            style={{ marginBottom: '24px' }}
-          >
-            <label className="block text-xs font-medium" style={{ color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-              Password
-            </label>
-            <div className="relative">
+          <div>
+            <label className="input-label">Password</label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="login-password"
+                className="input"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter password"
                 required
-                className="w-full text-sm focus:outline-none"
-                style={{
-                  padding: '14px 48px 14px 16px', background: 'rgba(255,255,255,0.04)',
-                  borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)',
-                  color: 'var(--color-text)', transition: 'all 200ms',
-                }}
+                style={{ paddingRight: 40 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute flex items-center justify-center cursor-pointer"
                 style={{
-                  right: '12px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', color: 'var(--color-text-dim)',
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text-tertiary)', padding: 4,
                 }}
               >
-                {showPassword ? <EyeOff style={{ width: '18px', height: '18px' }} /> : <Eye style={{ width: '18px', height: '18px' }} />}
+                {showPassword
+                  ? <EyeOff style={{ width: 16, height: 16 }} />
+                  : <Eye style={{ width: 16, height: 16 }} />
+                }
               </button>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Error */}
           {loginError && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-sm font-medium"
               style={{
-                color: '#ef4444', padding: '12px 16px', marginBottom: '20px',
-                borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
+                fontSize: '12px', color: 'var(--color-danger)',
+                padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                background: 'var(--color-danger-soft)',
               }}
             >
               {loginError}
-            </motion.div>
+            </motion.p>
           )}
 
-          {/* Submit */}
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            whileHover={{ scale: isLoading ? 1 : 1.01 }}
-            whileTap={{ scale: isLoading ? 1 : 0.98 }}
+          <button
             type="submit"
             disabled={isLoading}
-            id="login-submit"
-            className="w-full text-sm font-semibold flex items-center justify-center cursor-pointer"
-            style={{
-              padding: '14px 0', borderRadius: '14px', border: 'none',
-              gap: '10px', transition: 'all 200ms',
-              background: isLoading ? 'rgba(79,140,255,0.5)' : 'linear-gradient(135deg, #4f8cff, #6366f1)',
-              color: '#ffffff', cursor: isLoading ? 'wait' : 'pointer',
-            }}
+            className="btn-secondary"
+            style={{ width: '100%', height: 40, marginTop: 'var(--space-1)' }}
           >
-            {isLoading ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                  style={{
-                    width: '16px', height: '16px', borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#ffffff',
-                  }}
-                />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <LogIn style={{ width: '16px', height: '16px' }} />
-                Sign In
-              </>
-            )}
-          </motion.button>
+            <LogIn style={{ width: 15, height: 15 }} />
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
         </form>
 
-        {/* Footer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center text-xs"
-          style={{ color: 'var(--color-text-dim)', marginTop: '24px' }}
-        >
-          This is a demo app — no real authentication
-        </motion.p>
+        {/* Demo Hint */}
+        <p style={{
+          fontSize: '11px', color: 'var(--text-ghost)', textAlign: 'center',
+          marginTop: 'var(--space-6)',
+        }}>
+          Demo credentials:{' '}
+          <button
+            onClick={fillDemo}
+            style={{
+              background: 'none', border: 'none',
+              color: 'var(--color-trust)', cursor: 'pointer',
+              fontSize: '11px', textDecoration: 'underline',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            auto-fill
+          </button>
+        </p>
       </motion.div>
     </div>
   );

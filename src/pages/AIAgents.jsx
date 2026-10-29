@@ -1,578 +1,474 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Shield, Crosshair, Zap, Play, Square, Settings2, ChevronDown, ChevronUp, Terminal, RotateCcw, Sparkles, Clock, Activity } from 'lucide-react';
-import { runAgentPipeline, runSingleAgent } from '../agents';
-import PipelineVisualizer from '../components/agents/PipelineVisualizer';
-import MarketResults from '../components/agents/MarketResults';
-import RiskResults from '../components/agents/RiskResults';
-import StrategyResults from '../components/agents/StrategyResults';
-import ExecutionResults from '../components/agents/ExecutionResults';
-import AgentHistory, { saveToHistory } from '../components/agents/AgentHistory';
+import { useProgress } from '../context/ProgressContext';
+import { agentRegistry, runSingleAgent, runAgentPipeline } from '../agents';
+import {
+  Play, Loader2, ChevronRight, BookOpen,
+  Sparkles, RotateCcw, Settings2,
+} from 'lucide-react';
 
-const agentsMeta = [
-  {
-    name: 'Market Agent',
-    icon: Cpu,
-    description: 'Scans and analyzes market trends, identifies momentum, calculates Fear & Greed index',
-    color: '#4f8cff',
-    gradient: 'linear-gradient(135deg, #4f8cff, #3b7ff5)',
-    resultKey: 'market',
-  },
-  {
-    name: 'Risk Agent',
-    icon: Shield,
-    description: 'Calculates portfolio risk score, volatility, VaR, Sharpe ratio, and drawdown estimates',
-    color: '#f59e0b',
-    gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    resultKey: 'risk',
-  },
-  {
-    name: 'Strategy Agent',
-    icon: Crosshair,
-    description: 'Creates optimal asset allocation with diversification scoring and rebalancing advice',
-    color: '#22c55e',
-    gradient: 'linear-gradient(135deg, #22c55e, #16a34a)',
-    resultKey: 'strategy',
-  },
-  {
-    name: 'Execution Agent',
-    icon: Zap,
-    description: 'Simulates trade execution with realistic slippage, fees, fill prices, and P&L projections',
-    color: '#a78bfa',
-    gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)',
-    resultKey: 'execution',
-  },
-];
-
-const ResultComponent = {
-  market: MarketResults,
-  risk: RiskResults,
-  strategy: StrategyResults,
-  execution: ExecutionResults,
+const fadeIn = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
 };
 
-export default function AIAgents() {
-  // Global state
-  const [logs, setLogs] = useState([]);
-  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
-  const [pipelineResult, setPipelineResult] = useState(null);
-  const [activeAgent, setActiveAgent] = useState(null);
-  const [completedAgents, setCompletedAgents] = useState([]);
-
-  // Per-agent state
-  const [agentResults, setAgentResults] = useState({});
-  const [agentRunning, setAgentRunning] = useState({});
-  const [agentLogs, setAgentLogs] = useState({});
-  const [expandedAgent, setExpandedAgent] = useState(null);
-
-  // Configuration
-  const [investmentAmount, setInvestmentAmount] = useState(50000);
-  const [riskLevel, setRiskLevel] = useState('moderate');
-  const [showConfig, setShowConfig] = useState(false);
-  const [showTerminal, setShowTerminal] = useState(true);
-
-  // History refresh key
-  const [historyKey, setHistoryKey] = useState(0);
-
-  // Stats
-  const [totalRuns, setTotalRuns] = useState(() => {
-    try { return parseInt(localStorage.getItem('ai-agent-total-runs') || '0'); } catch { return 0; }
-  });
-
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [logs]);
-
-  // Run individual agent
-  const handleRunSingle = useCallback(async (agentName, resultKey) => {
-    setAgentRunning((p) => ({ ...p, [resultKey]: true }));
-    setAgentLogs((p) => ({ ...p, [resultKey]: [] }));
-    setAgentResults((p) => ({ ...p, [resultKey]: null }));
-    setExpandedAgent(resultKey);
-
-    try {
-      const result = await runSingleAgent(agentName, { riskLevel, investmentAmount });
-      setAgentResults((p) => ({ ...p, [resultKey]: result[resultKey] }));
-      setAgentLogs((p) => ({ ...p, [resultKey]: result[resultKey]?.logs || [] }));
-    } catch (err) {
-      setAgentLogs((p) => ({ ...p, [resultKey]: [`Error: ${err.message}`] }));
-    }
-
-    setAgentRunning((p) => ({ ...p, [resultKey]: false }));
-  }, [riskLevel, investmentAmount]);
-
-  // Run full pipeline
-  const handleRunAll = useCallback(async () => {
-    setIsPipelineRunning(true);
-    setLogs([]);
-    setPipelineResult(null);
-    setAgentResults({});
-    setActiveAgent(null);
-    setCompletedAgents([]);
-
-    const agentNames = ['Market Agent', 'Risk Agent', 'Strategy Agent', 'Execution Agent'];
-    let currentIdx = -1;
-
-    const res = await runAgentPipeline(investmentAmount, riskLevel, (log) => {
-      if (log.isHeader && log.agent) {
-        if (log.agent === 'done') {
-          setActiveAgent(null);
-          setCompletedAgents([...agentNames]);
-          return;
-        }
-        const idx = agentNames.indexOf(log.agent);
-        if (idx >= 0) {
-          // Mark previous as completed
-          if (currentIdx >= 0) {
-            setCompletedAgents((prev) => [...prev, agentNames[currentIdx]]);
-          }
-          currentIdx = idx;
-          setActiveAgent(log.agent);
-        }
-      }
-      setLogs((prev) => [...prev, log]);
-    });
-
-    setPipelineResult(res);
-    setAgentResults({
-      market: res.market,
-      risk: res.risk,
-      strategy: res.strategy,
-      execution: res.execution,
-    });
-    setExpandedAgent('market');
-
-    // Save to history
-    saveToHistory(res);
-    setHistoryKey((k) => k + 1);
-    const newTotal = totalRuns + 1;
-    setTotalRuns(newTotal);
-    localStorage.setItem('ai-agent-total-runs', String(newTotal));
-
-    setIsPipelineRunning(false);
-    setActiveAgent(null);
-  }, [investmentAmount, riskLevel, totalRuns]);
-
-  const isAnyRunning = isPipelineRunning || Object.values(agentRunning).some(Boolean);
-
+// ─── Single Agent Card ───
+function AgentCard({ agent, onRun, isRunning }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      {/* ───── HERO HEADER ───── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '14px',
-              background: 'linear-gradient(135deg, #4f8cff, #a78bfa)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Sparkles style={{ width: '20px', height: '20px', color: '#fff' }} />
-            </div>
-            <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>
-              AI Agent Command Center
-            </h1>
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-dim)', maxWidth: '480px', lineHeight: 1.6 }}>
-            Run agents independently for focused analysis or orchestrate the full pipeline: analyze → assess → strategize → execute
+    <motion.div
+      {...fadeIn}
+      className="panel-interactive"
+      onClick={() => !isRunning && onRun(agent.id)}
+      style={{ padding: 'var(--space-5)', cursor: isRunning ? 'wait' : 'pointer' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 'var(--radius-sm)',
+          background: `${agent.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '20px', flexShrink: 0,
+        }}>
+          {agent.icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 className="heading-tight" style={{ fontSize: 'var(--text-md)', marginBottom: 'var(--space-1)' }}>
+            {agent.name}
+          </h3>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            {agent.description}
           </p>
         </div>
-
-        {/* Quick Stats */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', padding: '8px 16px' }}>
-            <p style={{ fontSize: '18px', fontWeight: 800, color: '#4f8cff' }}>{totalRuns}</p>
-            <p style={{ fontSize: '9px', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Runs</p>
-          </div>
-          <div style={{ width: '1px', height: '32px', background: 'var(--color-border)' }} />
-          <div style={{ textAlign: 'center', padding: '8px 16px' }}>
-            <p style={{ fontSize: '18px', fontWeight: 800, color: '#22c55e' }}>4</p>
-            <p style={{ fontSize: '9px', fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Agents</p>
-          </div>
+        <div style={{
+          width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+          background: `${agent.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {isRunning
+            ? <Loader2 style={{ width: 16, height: 16, color: agent.color, animation: 'spin 1s linear infinite' }} />
+            : <Play style={{ width: 14, height: 14, color: agent.color }} />
+          }
         </div>
       </div>
+    </motion.div>
+  );
+}
 
-      {/* ───── CONFIGURATION + RUN ALL ───── */}
+// ─── Agent Result Display ───
+function AgentResult({ result, agentId }) {
+  if (!result) return null;
+
+  const renderKeyValue = (label, value) => (
+    <div style={{ marginBottom: 'var(--space-3)' }}>
+      <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-1)' }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.6 }}>
+        {value}
+      </p>
+    </div>
+  );
+
+  // Concept Agent result
+  if (agentId === 'concept' && result.concept) {
+    return (
+      <div>
+        {renderKeyValue('Concept', result.concept)}
+        {renderKeyValue('Explanation', result.explanation)}
+        {renderKeyValue('Analogy', result.analogy)}
+        {renderKeyValue('Indian Example', result.indianExample)}
+      </div>
+    );
+  }
+
+  // Risk Agent result
+  if (agentId === 'risk' && result.profile) {
+    return (
+      <div>
+        {renderKeyValue('Risk Profile', result.profile)}
+        {renderKeyValue('Description', result.description)}
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            Recommended Allocation
+          </p>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            {Object.entries(result.allocation).map(([key, value]) => (
+              <div key={key} style={{
+                padding: '6px 12px', borderRadius: 'var(--radius-sm)',
+                background: 'var(--surface-2)', fontSize: '12px', fontWeight: 500,
+              }}>
+                {key.charAt(0).toUpperCase() + key.slice(1)}: {value}%
+              </div>
+            ))}
+          </div>
+        </div>
+        {renderKeyValue('Instruments', result.instruments.join(' · '))}
+        {renderKeyValue('Expected Return', result.expectedReturn)}
+      </div>
+    );
+  }
+
+  // Goal Agent result
+  if (agentId === 'goal' && result.goal) {
+    return (
+      <div>
+        {renderKeyValue('Goal', `${result.icon} ${result.goal}`)}
+        {renderKeyValue('Target Amount', `₹${result.targetAmount.toLocaleString('en-IN')}`)}
+        {renderKeyValue('Inflation-Adjusted', `₹${result.inflationAdjustedTarget.toLocaleString('en-IN')}`)}
+        {renderKeyValue('Timeline', `${result.years} years`)}
+        {renderKeyValue('Required Monthly SIP', `₹${result.requiredMonthlySIP.toLocaleString('en-IN')}/month`)}
+        {renderKeyValue('Recommended Instruments', result.recommendedInstruments.join(' · '))}
+      </div>
+    );
+  }
+
+  // Simulation Agent result
+  if (agentId === 'simulation' && result.scenarios) {
+    return (
+      <div>
+        {renderKeyValue('Monthly SIP', `₹${result.monthlyAmount.toLocaleString('en-IN')}/month for ${result.years} years`)}
+        {renderKeyValue('Total Invested', `₹${result.totalInvested.toLocaleString('en-IN')}`)}
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', marginBottom: 'var(--space-2)' }}>
+            Scenario Comparison
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            {result.scenarios.map((s) => (
+              <div key={s.name} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-1)',
+              }}>
+                <span style={{ fontSize: '13px', color: s.color, fontWeight: 500 }}>{s.name}</span>
+                <span className="mono-number" style={{ fontSize: '13px', fontWeight: 600 }}>
+                  ₹{s.futureValue.toLocaleString('en-IN')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {renderKeyValue('Insight', result.insight)}
+      </div>
+    );
+  }
+
+  // Bias Agent result
+  if (agentId === 'bias' && result.detectedBiases) {
+    return (
+      <div>
+        {result.detectedBiases.map((bias, i) => (
+          <div key={i} style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+            <h4 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+              {bias.icon} {bias.name}
+            </h4>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-2)' }}>
+              {bias.description}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: 'var(--space-2)' }}>
+              <strong>Real example:</strong> {bias.realWorldExample}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--color-growth)', lineHeight: 1.5 }}>
+              <strong>How to overcome:</strong> {bias.howToOvercome}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback: generic render
+  return (
+    <pre style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+      {JSON.stringify(result, null, 2)}
+    </pre>
+  );
+}
+
+// ═══════ MAIN COMPONENT ═══════
+export default function AIAgents() {
+  const [runningAgent, setRunningAgent] = useState(null);
+  const [agentResults, setAgentResults] = useState({});
+  const [pipelineLogs, setPipelineLogs] = useState([]);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [pipelineResult, setPipelineResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('agents'); // 'agents' | 'pipeline'
+  const { incrementStat } = useProgress();
+
+  // Run a single agent
+  const handleRunAgent = useCallback(async (agentId) => {
+    setRunningAgent(agentId);
+    try {
+      const result = await runSingleAgent(agentId, {
+        query: 'compound interest',
+        riskTolerance: 'moderate',
+        timeHorizon: 20,
+        goalType: 'retirement',
+        targetAmount: 5000000,
+        monthlyAmount: 5000,
+        years: 20,
+      });
+      setAgentResults((prev) => ({ ...prev, [agentId]: result.result }));
+      incrementStat('simulationsRun');
+    } catch (err) {
+      console.error('Agent error:', err);
+    }
+    setRunningAgent(null);
+  }, [incrementStat]);
+
+  // Run full pipeline
+  const handleRunPipeline = useCallback(async () => {
+    setPipelineRunning(true);
+    setPipelineLogs([]);
+    setPipelineResult(null);
+    try {
+      const result = await runAgentPipeline(
+        { monthlyAmount: 5000, years: 20, riskTolerance: 'moderate', goalType: 'retirement', targetAmount: 5000000 },
+        (step) => setPipelineLogs((prev) => [...prev, step])
+      );
+      setPipelineResult(result);
+      incrementStat('simulationsRun');
+    } catch (err) {
+      console.error('Pipeline error:', err);
+    }
+    setPipelineRunning(false);
+  }, [incrementStat]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <h1 className="heading-tight" style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-1)' }}>
+          AI Mentor Hub 🤖
+        </h1>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+          5 educational AI agents that teach you financial concepts — they explain, never advise
+        </p>
+      </div>
+
+      {/* Tabs */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 20px', borderRadius: '16px', background: 'var(--color-surface)',
-        marginBottom: '20px', gap: '16px',
+        display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-6)',
+        background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)', padding: 2, width: 'fit-content',
       }}>
-        {/* Config Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+        {['agents', 'pipeline'].map((tab) => (
           <button
-            onClick={() => setShowConfig(!showConfig)}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '8px 14px', borderRadius: '10px',
-              background: showConfig ? 'var(--color-accent-soft)' : 'transparent',
-              border: '1px solid var(--color-border)', color: 'var(--color-text-muted)',
-              fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms',
+              padding: '8px 20px', borderRadius: 'var(--radius-sm)',
+              background: activeTab === tab ? 'var(--bg-secondary)' : 'transparent',
+              border: activeTab === tab ? '1px solid var(--border-subtle)' : '1px solid transparent',
+              color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              transition: 'all 150ms',
             }}
           >
-            <Settings2 style={{ width: '14px', height: '14px' }} />
-            Config
+            {tab === 'agents' ? 'Individual Agents' : 'Full Pipeline'}
           </button>
-
-          <AnimatePresence>
-            {showConfig && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ fontSize: '11px', color: 'var(--color-text-dim)', fontWeight: 600, whiteSpace: 'nowrap' }}>Investment</label>
-                  <input
-                    type="number" value={investmentAmount}
-                    onChange={(e) => setInvestmentAmount(Number(e.target.value) || 0)}
-                    style={{
-                      width: '110px', padding: '6px 10px', borderRadius: '8px',
-                      background: 'var(--color-input-bg)', border: '1px solid var(--color-border)',
-                      color: 'var(--color-text)', fontSize: '12px', fontWeight: 600,
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {['conservative', 'moderate', 'aggressive'].map((level) => (
-                    <button key={level} onClick={() => setRiskLevel(level)}
-                      style={{
-                        padding: '5px 12px', borderRadius: '8px', border: 'none',
-                        background: riskLevel === level ? '#4f8cff' : 'var(--color-surface-hover)',
-                        color: riskLevel === level ? '#fff' : 'var(--color-text-muted)',
-                        fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                        transition: 'all 150ms', textTransform: 'capitalize',
-                      }}
-                    >{level}</button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Inline config badges when collapsed */}
-          {!showConfig && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-dim)', fontWeight: 600 }}>
-                ${investmentAmount.toLocaleString()} · <span style={{ textTransform: 'capitalize' }}>{riskLevel}</span>
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Run All Button */}
-        <motion.button
-          onClick={handleRunAll}
-          disabled={isAnyRunning}
-          whileHover={{ scale: isAnyRunning ? 1 : 1.02 }}
-          whileTap={{ scale: isAnyRunning ? 1 : 0.98 }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '10px 24px', borderRadius: '12px', border: 'none',
-            background: isAnyRunning ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #4f8cff, #3b7ff5)',
-            color: isAnyRunning ? 'var(--color-text-dim)' : '#fff',
-            fontSize: '13px', fontWeight: 700, cursor: isAnyRunning ? 'not-allowed' : 'pointer',
-            transition: 'all 200ms',
-            boxShadow: isAnyRunning ? 'none' : '0 4px 20px rgba(79,140,255,0.3)',
-          }}
-        >
-          {isPipelineRunning ? (
-            <>
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                <Activity style={{ width: '15px', height: '15px' }} />
-              </motion.div>
-              Running Pipeline...
-            </>
-          ) : (
-            <>
-              <Play style={{ width: '15px', height: '15px' }} />
-              Run All Agents
-            </>
-          )}
-        </motion.button>
+        ))}
       </div>
 
-      {/* ───── PIPELINE VISUALIZER ───── */}
-      <PipelineVisualizer
-        activeAgent={activeAgent}
-        completedAgents={completedAgents}
-        isRunning={isPipelineRunning}
-      />
+      {/* Individual Agents Tab */}
+      {activeTab === 'agents' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          {agentRegistry.map((agent) => (
+            <div key={agent.id}>
+              <AgentCard
+                agent={agent}
+                onRun={handleRunAgent}
+                isRunning={runningAgent === agent.id}
+              />
+              {/* Result */}
+              <AnimatePresence>
+                {agentResults[agent.id] && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="panel"
+                    style={{ marginTop: 'var(--space-2)', padding: 'var(--space-5)', overflow: 'hidden' }}
+                  >
+                    <AgentResult result={agentResults[agent.id]} agentId={agent.id} />
 
-      {/* ───── AGENT CARDS GRID ───── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '28px' }}>
-        {agentsMeta.map((agent, idx) => {
-          const isActive = activeAgent === agent.name;
-          const isSoloRunning = agentRunning[agent.resultKey];
-          const hasResult = !!agentResults[agent.resultKey];
-          const isExpanded = expandedAgent === agent.resultKey;
-          const ResultComp = ResultComponent[agent.resultKey];
-
-          return (
-            <motion.div
-              key={agent.name}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="panel-static"
-              style={{ padding: 0, overflow: 'hidden', position: 'relative' }}
-            >
-              {/* Active scanning line */}
-              {(isActive || isSoloRunning) && (
-                <motion.div
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${agent.color}, transparent)`, zIndex: 2 }}
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                />
-              )}
-
-              {/* Card Header */}
-              <div style={{ padding: '20px 22px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: 1 }}>
-                  {/* Icon */}
-                  <div style={{
-                    width: '44px', height: '44px', borderRadius: '14px', flexShrink: 0,
-                    background: `${agent.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: `1px solid ${agent.color}20`,
-                  }}>
-                    {(isActive || isSoloRunning) ? (
-                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}>
-                        <agent.icon style={{ width: '20px', height: '20px', color: agent.color }} />
-                      </motion.div>
-                    ) : (
-                      <agent.icon style={{ width: '20px', height: '20px', color: agent.color }} />
-                    )}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)' }}>{agent.name}</h3>
-                      {/* Status badge */}
+                    {/* What Did You Learn? */}
+                    {agentResults[agent.id]?.whatDidYouLearn && (
                       <div style={{
-                        padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                        background: (isActive || isSoloRunning) ? `${agent.color}18` : hasResult ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
-                        color: (isActive || isSoloRunning) ? agent.color : hasResult ? '#22c55e' : 'var(--color-text-dim)',
+                        marginTop: 'var(--space-4)', padding: 'var(--space-4)',
+                        borderRadius: 'var(--radius-sm)', background: 'var(--color-learning-soft)',
+                        border: '1px solid rgba(245, 158, 11, 0.15)',
                       }}>
-                        {(isActive || isSoloRunning) ? 'Running' : hasResult ? 'Complete' : 'Idle'}
-                      </div>
-                    </div>
-                    <p style={{ fontSize: '11px', color: 'var(--color-text-dim)', lineHeight: 1.5 }}>{agent.description}</p>
-                  </div>
-                </div>
-
-                {/* Solo Run Button */}
-                <motion.button
-                  onClick={() => handleRunSingle(agent.name, agent.resultKey)}
-                  disabled={isAnyRunning}
-                  whileHover={{ scale: isAnyRunning ? 1 : 1.08 }}
-                  whileTap={{ scale: isAnyRunning ? 1 : 0.95 }}
-                  style={{
-                    width: '36px', height: '36px', borderRadius: '10px', border: 'none',
-                    background: isSoloRunning ? `${agent.color}20` : `${agent.color}10`,
-                    color: agent.color, cursor: isAnyRunning ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    opacity: isAnyRunning && !isSoloRunning ? 0.3 : 1,
-                    transition: 'all 150ms', flexShrink: 0,
-                  }}
-                  title={`Run ${agent.name} solo`}
-                >
-                  {isSoloRunning ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                      <RotateCcw style={{ width: '14px', height: '14px' }} />
-                    </motion.div>
-                  ) : (
-                    <Play style={{ width: '14px', height: '14px' }} />
-                  )}
-                </motion.button>
-              </div>
-
-              {/* Quick Result Summary */}
-              {hasResult && !isExpanded && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{ padding: '0 22px 12px' }}
-                >
-                  <button
-                    onClick={() => setExpandedAgent(agent.resultKey)}
-                    style={{
-                      width: '100%', padding: '10px 12px', borderRadius: '10px',
-                      background: `${agent.color}06`, border: `1px solid ${agent.color}15`,
-                      color: 'var(--color-text-muted)', fontSize: '11px',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center',
-                      justifyContent: 'space-between', transition: 'all 150ms',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
-                      {agent.resultKey === 'market' && `Sentiment: ${agentResults.market?.sentiment?.toUpperCase()} · Avg: ${agentResults.market?.avgChange}%`}
-                      {agent.resultKey === 'risk' && `Risk: ${agentResults.risk?.riskScore}/100 · Sharpe: ${agentResults.risk?.sharpeRatio}`}
-                      {agent.resultKey === 'strategy' && `Assets: ${agentResults.strategy?.allocation?.length} · Diversity: ${agentResults.strategy?.diversificationScore}/100`}
-                      {agent.resultKey === 'execution' && `Trades: ${agentResults.execution?.totalTrades} · Fill: ${agentResults.execution?.fillRate}%`}
-                    </span>
-                    <ChevronDown style={{ width: '14px', height: '14px' }} />
-                  </button>
-                </motion.div>
-              )}
-
-              {/* Expanded Results */}
-              <AnimatePresence>
-                {isExpanded && hasResult && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ borderTop: '1px solid var(--color-border)', padding: '16px 22px 20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: agent.color }}>
-                          Analysis Results
-                        </span>
-                        <button
-                          onClick={() => setExpandedAgent(null)}
-                          style={{
-                            background: 'transparent', border: 'none', cursor: 'pointer',
-                            color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: '4px',
-                            fontSize: '10px', fontWeight: 600,
-                          }}
-                        >
-                          Collapse <ChevronUp style={{ width: '12px', height: '12px' }} />
-                        </button>
-                      </div>
-                      <ResultComp data={agentResults[agent.resultKey]} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Solo Agent Logs (mini terminal) */}
-              <AnimatePresence>
-                {isSoloRunning && agentLogs[agent.resultKey] && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    style={{ borderTop: '1px solid var(--color-border)', overflow: 'hidden' }}
-                  >
-                    <div style={{ padding: '12px 22px 16px', maxHeight: '120px', overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
-                      {agentLogs[agent.resultKey].map((log, i) => (
-                        <div key={i} style={{ color: 'var(--color-text-muted)', padding: '2px 0' }}>
-                          <span style={{ color: agent.color, marginRight: '6px' }}>›</span>{log}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                          <Sparkles style={{ width: 14, height: 14, color: 'var(--color-learning)' }} />
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-learning)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            What Did You Learn?
+                          </span>
                         </div>
-                      ))}
-                      <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1 }} style={{ color: agent.color }}>▋</motion.span>
-                    </div>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                          {agentResults[agent.id].whatDidYouLearn}
+                        </p>
+                        {agentResults[agent.id].relatedLesson && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                            <BookOpen style={{ width: 13, height: 13, color: 'var(--color-trust)' }} />
+                            <span style={{ fontSize: '12px', color: 'var(--color-trust)', fontWeight: 500 }}>
+                              Explore this topic in Learning Paths →
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-          );
-        })}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* ───── TERMINAL ───── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="panel-static"
-        style={{ padding: 0, marginBottom: '28px', overflow: 'hidden' }}
-      >
-        <button
-          onClick={() => setShowTerminal(!showTerminal)}
-          style={{
-            width: '100%', padding: '16px 24px', background: 'transparent', border: 'none',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            color: 'var(--color-text)',
-          }}
-        >
-          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Terminal style={{ width: '14px', height: '14px' }} />
-            Pipeline Terminal
-            {logs.length > 0 && (
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#4f8cff', background: 'rgba(79,140,255,0.1)', padding: '2px 8px', borderRadius: '6px' }}>
-                {logs.length} entries
-              </span>
-            )}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isPipelineRunning && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '999px', background: '#4f8cff' }} className="animate-pulse-soft" />
-                <span style={{ fontSize: '11px', color: '#4f8cff', fontWeight: 600 }}>Processing</span>
+      {/* Pipeline Tab */}
+      {activeTab === 'pipeline' && (
+        <div>
+          {/* Run Pipeline Button */}
+          <div className="panel" style={{ padding: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+              <div>
+                <h3 className="heading-tight" style={{ fontSize: 'var(--text-md)', marginBottom: 'var(--space-1)' }}>
+                  Full Educational Pipeline
+                </h3>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                  Runs all 5 agents sequentially: Concept → Risk → Goal → Simulation → Bias Detection
+                </p>
               </div>
-            )}
-            {showTerminal ? <ChevronUp style={{ width: '14px', height: '14px', color: 'var(--color-text-dim)' }} /> : <ChevronDown style={{ width: '14px', height: '14px', color: 'var(--color-text-dim)' }} />}
-          </div>
-        </button>
-
-        <AnimatePresence>
-          {showTerminal && (
-            <motion.div
-              initial={{ height: 0 }}
-              animate={{ height: 'auto' }}
-              exit={{ height: 0 }}
-              style={{ overflow: 'hidden' }}
-            >
-              {/* Processing bar */}
-              {isPipelineRunning && (
-                <motion.div
-                  style={{ height: '1px', background: 'linear-gradient(90deg, transparent, var(--color-accent), transparent)' }}
-                  animate={{ opacity: [0.3, 0.8, 0.3] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                />
-              )}
-
-              <div ref={scrollRef} style={{ maxHeight: '300px', overflowY: 'auto', padding: '0 24px 20px', fontFamily: 'var(--font-mono)', fontSize: '11px', lineHeight: 2 }}>
-                {logs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-dim)' }}>
-                    <Terminal style={{ width: '24px', height: '24px', opacity: 0.2, margin: '0 auto 8px' }} />
-                    <p style={{ fontSize: '12px' }}>Waiting for pipeline execution</p>
-                  </div>
+              <button
+                onClick={handleRunPipeline}
+                disabled={pipelineRunning}
+                className="btn-primary"
+                style={{ height: 40, padding: '0 20px', fontSize: '13px', flexShrink: 0 }}
+              >
+                {pipelineRunning ? (
+                  <>
+                    <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} />
+                    Running...
+                  </>
                 ) : (
                   <>
-                    {logs.map((log, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -6 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.12 }}
-                        style={{
-                          padding: '4px 8px', borderRadius: '6px',
-                          marginTop: log.isHeader && idx > 0 ? '12px' : '1px',
-                        }}
-                        className={log.isHeader ? 'terminal-glow' : ''}
-                      >
-                        <span style={{ color: 'var(--color-text-dim)', marginRight: '10px', fontSize: '9px', userSelect: 'none' }}>
-                          {new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false })}
-                        </span>
-                        <span style={{ color: log.isHeader ? 'var(--color-accent)' : 'var(--color-text-muted)', fontWeight: log.isHeader ? 700 : 400 }}>
-                          {log.text}
-                        </span>
-                      </motion.div>
-                    ))}
-                    {isPipelineRunning && (
-                      <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2 }} style={{ padding: '4px 8px', color: 'var(--color-accent)' }}>▋</motion.span>
-                    )}
+                    <Play style={{ width: 15, height: 15 }} />
+                    Run Pipeline
                   </>
+                )}
+              </button>
+            </div>
+
+            {/* Pipeline Parameters */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)',
+            }}>
+              {[
+                { label: 'Monthly SIP', value: '₹5,000' },
+                { label: 'Duration', value: '20 years' },
+                { label: 'Risk', value: 'Moderate' },
+                { label: 'Goal', value: 'Retirement' },
+                { label: 'Target', value: '₹50 Lakh' },
+              ].map((p) => (
+                <div key={p.label} style={{
+                  padding: '4px 12px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-2)', fontSize: '11px',
+                }}>
+                  <span style={{ color: 'var(--text-tertiary)' }}>{p.label}:</span>{' '}
+                  <span className="mono-number" style={{ fontWeight: 600 }}>{p.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pipeline Log */}
+          {pipelineLogs.length > 0 && (
+            <div className="panel" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+              <p style={{
+                fontSize: '11px', fontWeight: 600, textTransform: 'uppercase',
+                letterSpacing: '0.06em', color: 'var(--text-tertiary)',
+                marginBottom: 'var(--space-3)',
+              }}>
+                Pipeline Log
+              </p>
+              <div style={{
+                maxHeight: 300, overflowY: 'auto',
+                fontFamily: 'var(--font-mono)', fontSize: '12px', lineHeight: 1.8,
+              }}>
+                {pipelineLogs.map((log, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    style={{
+                      color: log.isHeader ? 'var(--color-trust)' : 'var(--text-secondary)',
+                      fontWeight: log.isHeader ? 600 : 400,
+                    }}
+                  >
+                    {log.text}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pipeline Result Summary */}
+          {pipelineResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="panel"
+              style={{ padding: 'var(--space-6)' }}
+            >
+              <p style={{
+                fontSize: '11px', fontWeight: 600, textTransform: 'uppercase',
+                letterSpacing: '0.06em', color: 'var(--color-growth)',
+                marginBottom: 'var(--space-4)',
+              }}>
+                ✓ Pipeline Complete — Educational Summary
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
+                {/* Concept */}
+                {pipelineResult.concept && (
+                  <div style={{ padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-2)' }}>📚 {pipelineResult.concept.concept}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{pipelineResult.concept.whatDidYouLearn}</p>
+                  </div>
+                )}
+                {/* Risk */}
+                {pipelineResult.risk && (
+                  <div style={{ padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-2)' }}>🛡️ {pipelineResult.risk.profile} Risk Profile</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{pipelineResult.risk.whatDidYouLearn}</p>
+                  </div>
+                )}
+                {/* Goal */}
+                {pipelineResult.goal && (
+                  <div style={{ padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-2)' }}>🎯 {pipelineResult.goal.goal}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{pipelineResult.goal.whatDidYouLearn}</p>
+                  </div>
+                )}
+                {/* Simulation */}
+                {pipelineResult.simulation && (
+                  <div style={{ padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-2)' }}>🧪 Simulation Result</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{pipelineResult.simulation.whatDidYouLearn}</p>
+                  </div>
+                )}
+                {/* Bias */}
+                {pipelineResult.bias && (
+                  <div style={{ padding: 'var(--space-4)', background: 'var(--surface-1)', borderRadius: 'var(--radius-sm)' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: 'var(--space-2)' }}>🧠 Bias Awareness</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{pipelineResult.bias.whatDidYouLearn}</p>
+                  </div>
                 )}
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </motion.div>
+        </div>
+      )}
 
-      {/* ───── HISTORY ───── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <AgentHistory key={historyKey} />
-      </motion.div>
+      {/* CSS for spin animation */}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </motion.div>
   );
 }

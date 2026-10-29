@@ -1,74 +1,121 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Bell, User, Activity } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useProgress } from '../context/ProgressContext';
+import { Flame, Sparkles } from 'lucide-react';
 
-const navLinks = [
-  { path: '/', label: 'Dashboard' },
-  { path: '/portfolio', label: 'Portfolio' },
-  { path: '/agents', label: 'AI Strategy' },
-  { path: '/market', label: 'Market' },
-  { path: '/settings', label: 'Settings' },
-];
+// Map paths to human-readable page titles
+const pageTitles = {
+  '/dashboard': 'Home',
+  '/learn': 'Learning Paths',
+  '/glossary': 'Glossary',
+  '/simulator': 'SIP Calculator',
+  '/goals': 'Goal Planner',
+  '/portfolio': 'Virtual Portfolio',
+  '/ai-chat': 'AI Mentor',
+  '/agents': 'AI Insights',
+  '/market': 'Indian Markets',
+  '/schemes': 'Government Schemes',
+  '/mutual-funds': 'Mutual Funds',
+  '/news': 'Market News',
+  '/progress': 'My Journey',
+  '/achievements': 'Achievements',
+  '/settings': 'Settings',
+  '/profile': 'Profile',
+};
 
 export default function Navbar() {
   const location = useLocation();
+  const { xp, level, streak } = useProgress();
+
+  const currentTitle = pageTitles[location.pathname] || '';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-card-strong border-b border-[var(--color-border)] rounded-none">
-      <div className="flex items-center justify-between h-14 px-6">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-8 h-8 rounded-lg bg-[var(--color-accent)] flex items-center justify-center">
-            <Activity className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-base font-bold tracking-tight text-[var(--color-text-primary)]">
-            AI Invest
+    <header
+      style={{
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 var(--space-8)',
+        borderBottom: '1px solid var(--border-subtle)',
+        background: 'var(--bg-secondary)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+      }}
+    >
+      {/* Page Title */}
+      <div>
+        <h1
+          className="heading-tight"
+          style={{
+            fontSize: 'var(--text-md)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          {currentTitle}
+        </h1>
+      </div>
+
+      {/* Right: Streak + Level + XP */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        {/* Streak */}
+        {streak > 0 && (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              padding: '4px 10px', borderRadius: 'var(--radius-full)',
+              background: 'var(--color-learning-soft)',
+            }}
+          >
+            <Flame style={{ width: 14, height: 14, color: 'var(--color-learning)' }} />
+            <span style={{
+              fontSize: '12px', fontWeight: 600,
+              color: 'var(--color-learning)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              {streak}
+            </span>
+          </motion.div>
+        )}
+
+        {/* Level Badge */}
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 12px', borderRadius: 'var(--radius-full)',
+            background: 'var(--color-ai-soft)',
+          }}
+        >
+          <span style={{ fontSize: '13px' }}>{level.icon}</span>
+          <span style={{
+            fontSize: '12px', fontWeight: 500,
+            color: 'var(--color-ai)',
+          }}>
+            {level.name}
           </span>
-        </Link>
+        </div>
 
-        {/* Center Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`relative px-3.5 py-1.5 text-[13px] font-medium rounded-lg transition-all duration-200 no-underline ${
-                  isActive
-                    ? 'text-[var(--color-text-primary)]'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                }`}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="navbar-active"
-                    className="absolute inset-0 bg-[var(--color-accent-muted)] rounded-lg"
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
-                  />
-                )}
-                <span className="relative z-10">{link.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Right Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-text-muted)]
-              hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] transition-all cursor-pointer"
-            id="notification-btn"
+        {/* XP */}
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: '4px',
+            padding: '4px 10px', borderRadius: 'var(--radius-full)',
+            background: 'var(--color-trust-muted)',
+          }}
+        >
+          <Sparkles style={{ width: 13, height: 13, color: 'var(--color-trust)' }} />
+          <span
+            className="mono-number"
+            style={{
+              fontSize: '12px', fontWeight: 600,
+              color: 'var(--color-trust)',
+            }}
           >
-            <Bell className="w-4 h-4" />
-          </button>
-          <button
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-purple-500
-              flex items-center justify-center cursor-pointer"
-            id="profile-btn"
-          >
-            <User className="w-3.5 h-3.5 text-white" />
-          </button>
+            {xp} XP
+          </span>
         </div>
       </div>
     </header>

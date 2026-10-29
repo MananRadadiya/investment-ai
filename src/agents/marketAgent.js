@@ -1,80 +1,79 @@
-// Market Agent — analyzes current market trends with rich analysis
-import { getMarketData } from '../data/marketData';
+// ─── Concept Agent — Explains financial concepts with Indian examples ───
+// Replaces the old Market Agent (which gave trading signals)
 
-export function runMarketAgent() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const assets = getMarketData();
-      const bullish = assets.filter((a) => a.changePercent > 0);
-      const bearish = assets.filter((a) => a.changePercent < 0);
-      const avgChange = assets.reduce((sum, a) => sum + a.changePercent, 0) / assets.length;
+const conceptExplanations = {
+  sip: {
+    concept: 'Systematic Investment Plan (SIP)',
+    explanation: 'SIP lets you invest a fixed amount every month in mutual funds. It removes the need to time the market and builds investing discipline.',
+    analogy: 'Think of SIP like planting a seed every month. Some months the soil is dry (market is down), some months it rains (market is up). But because you plant consistently, your garden grows over time.',
+    indianExample: '₹5,000/month SIP in NIFTY 50 Index Fund for 20 years at 12% historical return = ₹49,95,740. You invested only ₹12,00,000.',
+    whatDidYouLearn: 'SIP works because of rupee cost averaging — you buy more units when prices are low and fewer when prices are high.',
+  },
+  compoundInterest: {
+    concept: 'Compound Interest',
+    explanation: 'Compound interest means earning interest on your interest. It turns small, regular investments into large wealth over time.',
+    analogy: 'Imagine a snowball rolling downhill. It starts small, but as it rolls, it picks up more snow and grows faster and faster. That is compounding.',
+    indianExample: '₹1,00,000 at 12% compound interest for 20 years becomes ₹9,64,629. Simple interest would only give ₹3,40,000.',
+    whatDidYouLearn: 'The key to compounding is TIME. Starting at 25 beats starting at 35, even with a smaller amount.',
+  },
+  inflation: {
+    concept: 'Inflation',
+    explanation: 'Inflation is the gradual increase in prices over time, which reduces the purchasing power of your money.',
+    analogy: 'If a plate of idli costs ₹40 today and inflation is 6%, the same plate will cost ₹72 in 10 years. Your ₹40 will only buy half a plate.',
+    indianExample: 'India\'s average inflation has been 5-7% over the past decade. A savings account earning 3.5% actually LOSES purchasing power.',
+    whatDidYouLearn: 'Your investments must earn MORE than inflation (currently ~6%) to create real wealth. This is called "real return."',
+  },
+};
 
-      const sentiment = avgChange > 0.5 ? 'bullish' : avgChange < -0.5 ? 'bearish' : 'neutral';
+export async function runConceptAgent(input) {
+  const steps = [];
 
-      // Sector analysis
-      const sectorMap = {};
-      assets.forEach((a) => {
-        if (!sectorMap[a.sector]) sectorMap[a.sector] = { assets: [], totalChange: 0 };
-        sectorMap[a.sector].assets.push(a);
-        sectorMap[a.sector].totalChange += a.changePercent;
-      });
-      const sectors = Object.entries(sectorMap).map(([name, data]) => ({
-        name,
-        count: data.assets.length,
-        avgChange: +(data.totalChange / data.assets.length).toFixed(2),
-        topAsset: data.assets.sort((a, b) => b.changePercent - a.changePercent)[0]?.symbol,
-      })).sort((a, b) => b.avgChange - a.avgChange);
-
-      // Category breakdown
-      const categories = {};
-      assets.forEach((a) => {
-        if (!categories[a.category]) categories[a.category] = { count: 0, bullish: 0, bearish: 0 };
-        categories[a.category].count++;
-        if (a.changePercent > 0) categories[a.category].bullish++;
-        else categories[a.category].bearish++;
-      });
-
-      // Momentum indicators (simulated)
-      const momentum = +(50 + avgChange * 12 + (Math.random() * 10 - 5)).toFixed(0);
-      const rsi = Math.min(100, Math.max(0, +(50 + avgChange * 8 + (Math.random() * 15 - 7)).toFixed(0)));
-      const fearGreed = Math.min(100, Math.max(0, +(45 + avgChange * 15 + (Math.random() * 10)).toFixed(0)));
-
-      // Top movers
-      const sorted = [...assets].sort((a, b) => b.changePercent - a.changePercent);
-      const topGainers = sorted.slice(0, 5);
-      const topLosers = sorted.slice(-5).reverse();
-
-      resolve({
-        agent: 'Market Agent',
-        timestamp: Date.now(),
-        sentiment,
-        bullishCount: bullish.length,
-        bearishCount: bearish.length,
-        avgChange: +avgChange.toFixed(2),
-        topPick: sorted[0]?.symbol,
-        assets,
-        sectors,
-        categories,
-        momentum,
-        rsi,
-        fearGreed,
-        topGainers,
-        topLosers,
-        totalAssets: assets.length,
-        marketStatus: 'open',
-        logs: [
-          `Scanning ${assets.length} assets across ${Object.keys(sectorMap).length} sectors...`,
-          `Detected ${bullish.length} bullish, ${bearish.length} bearish signals`,
-          `Overall market sentiment: ${sentiment.toUpperCase()}`,
-          `Average market change: ${avgChange > 0 ? '+' : ''}${avgChange.toFixed(2)}%`,
-          `Momentum index: ${momentum} | RSI: ${rsi}`,
-          `Fear & Greed index: ${fearGreed}/100`,
-          `Top sector: ${sectors[0]?.name} (${sectors[0]?.avgChange > 0 ? '+' : ''}${sectors[0]?.avgChange}%)`,
-          `Top performing asset: ${sorted[0]?.symbol} (+${sorted[0]?.changePercent.toFixed(2)}%)`,
-          `Worst performing: ${sorted[sorted.length-1]?.symbol} (${sorted[sorted.length-1]?.changePercent.toFixed(2)}%)`,
-          'Market analysis complete ✓',
-        ],
-      });
-    }, 800);
+  // Step 1: Identify the concept
+  steps.push({
+    agent: '📚 Concept Agent',
+    action: 'Identifying financial concept',
+    status: 'processing',
+    detail: `Analyzing query: "${input.query || 'financial concept'}"`,
+    timestamp: Date.now(),
   });
+
+  await new Promise((r) => setTimeout(r, 800));
+
+  // Step 2: Build explanation with Indian context
+  const conceptKey = Object.keys(conceptExplanations).find(
+    (k) => (input.query || '').toLowerCase().includes(k.toLowerCase())
+  ) || 'compoundInterest';
+
+  const concept = conceptExplanations[conceptKey];
+
+  steps.push({
+    agent: '📚 Concept Agent',
+    action: 'Building educational explanation',
+    status: 'processing',
+    detail: `Concept: ${concept.concept}`,
+    timestamp: Date.now(),
+  });
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  // Step 3: Generate output
+  steps.push({
+    agent: '📚 Concept Agent',
+    action: 'Explanation ready',
+    status: 'complete',
+    detail: concept.explanation,
+    timestamp: Date.now(),
+  });
+
+  return {
+    steps,
+    result: {
+      concept: concept.concept,
+      explanation: concept.explanation,
+      analogy: concept.analogy,
+      indianExample: concept.indianExample,
+      whatDidYouLearn: concept.whatDidYouLearn,
+      relatedLesson: 'money-basics',
+    },
+  };
 }
